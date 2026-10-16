@@ -12,8 +12,10 @@ android {
         applicationId = "com.ibrowser"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // every CI build gets a higher version so updates (APK or AAB) install over the previous one
+        val run = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = run
+        versionName = "1.0.$run"
     }
 
     signingConfigs {

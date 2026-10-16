@@ -4,6 +4,10 @@ import android.content.Intent
 import android.webkit.MimeTypeMap
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.material.icons.outlined.FilterNone
+import androidx.compose.material.icons.outlined.ChevronLeft
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -87,11 +91,14 @@ import java.util.Date
 @Composable
 fun DownloadsSheet(visible: Boolean) {
     val c = Ios.c
-    IosSheet(visible, "Downloads", { Browser.showDownloads = false }, leading = {
+    var adding by remember { mutableStateOf(false) }
+    IosSheet(visible, "Downloads", { Browser.showDownloads = false; adding = false }, leading = {
         Row {
             TextAction("Clear") { DownloadManager.clearFinished() }
+            TextAction("New") { adding = !adding }
         }
     }) {
+        if (adding) NewDownloadBox { link -> adding = false; Browser.downloadFromLink(link) }
         val list = DownloadManager.items
         val active = list.count { it.isActive }
         if (list.isNotEmpty()) {
@@ -126,7 +133,7 @@ private fun iconFor(d: DownloadItem): androidx.compose.ui.graphics.vector.ImageV
     val ext = d.fileName.substringAfterLast('.', "").lowercase()
     val mime = d.mime ?: MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: ""
     return when {
-        d.kind != DlKind.FILE || mime.startsWith("video") -> Icons.Outlined.VideoFile
+        d.kind == DlKind.HLS || d.kind == DlKind.DASH || mime.startsWith("video") -> Icons.Outlined.VideoFile
         mime.startsWith("audio") -> Icons.Outlined.AudioFile
         mime.startsWith("image") -> Icons.Outlined.Image
         ext == "pdf" -> Icons.Outlined.PictureAsPdf
@@ -191,7 +198,8 @@ private fun DownloadRow(d: DownloadItem) {
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(d.fileName, style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = c.label, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, false))
-                    if (d.kind != DlKind.FILE) { Spacer(Modifier.width(6.dp)); Pill(d.kind.name, c.orange) }
+                    if (d.kind == DlKind.HLS || d.kind == DlKind.DASH) { Spacer(Modifier.width(6.dp)); Pill(d.kind.name, c.orange) }
+                    if (d.kind == DlKind.BLOB) { Spacer(Modifier.width(6.dp)); Pill("PAGE", c.tint) }
                 }
                 Spacer(Modifier.height(3.dp))
                 Text(statusText(d), style = Ios.footnote, color = if (d.status == DlStatus.FAILED) c.red else c.secondary, maxLines = 2)
@@ -211,7 +219,7 @@ private fun DownloadRow(d: DownloadItem) {
             }
             Spacer(Modifier.width(8.dp))
             when (d.status) {
-                DlStatus.RUNNING, DlStatus.QUEUED -> RoundAction(Icons.Outlined.Pause) { DownloadManager.pause(d.id) }
+                DlStatus.RUNNING, DlStatus.QUEUED -> if (d.kind != DlKind.BLOB) RoundAction(Icons.Outlined.Pause) { DownloadManager.pause(d.id) }
                 DlStatus.PAUSED -> RoundAction(Icons.Outlined.PlayArrow) { DownloadManager.resume(d.id) }
                 DlStatus.FAILED, DlStatus.CANCELLED -> RoundAction(Icons.Outlined.Refresh) { DownloadManager.resume(d.id) }
                 DlStatus.CONVERTING -> {}
@@ -375,6 +383,7 @@ fun SettingsSheet(visible: Boolean) {
                     ) { s.layout = l; s.save() }
                 }
             }
+            ToolbarAppearanceGroup()
             IosGroup("Privacy & Security") {
                 IosRow("Block Ads & Trackers", trailing = { IosSwitch(s.adBlock) { s.adBlock = it; s.save() } })
                 IosRow("Hide Ad Elements", subtitle = "Cosmetic filtering & YouTube ad skipping", trailing = { IosSwitch(s.cosmetic) { s.cosmetic = it; s.save() } })
@@ -562,6 +571,115 @@ private fun WebsitePermissionsGroup() {
                 divider = i < all.size - 1,
                 trailing = { Text("Reset", style = Ios.subhead, color = c.tint) }
             ) { com.ibrowser.browser.SitePermissions.clear(host); version++ }
+        }
+    }
+}
+
+
+/** Paste-a-link box: http(s), ftp, HLS (.m3u8), DASH (.mpd), data: and content:// links. */
+@Composable
+private fun NewDownloadBox(onGo: (String) -> Unit) {
+    val c = Ios.c
+    val clip = androidx.compose.ui.platform.LocalClipboardManager.current
+    var text by remember {
+        mutableStateOf(clip.getText()?.text?.let { com.ibrowser.download.LinkResolver.extractLink(it) } ?: "")
+    }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).glassCard(RoundedCornerShape(22.dp)).padding(14.dp)) {
+        Text("New Download", style = Ios.headline, color = c.label)
+        Spacer(Modifier.height(4.dp))
+        Text("Paste any link — files, FTP, video streams (.m3u8 / .mpd) or data: links.", style = Ios.footnote, color = c.secondary)
+        Spacer(Modifier.height(10.dp))
+        androidx.compose.foundation.text.BasicTextField(
+            text, { text = it }, singleLine = true,
+            textStyle = Ios.body.copy(color = c.label),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(c.tint),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri, imeAction = androidx.compose.ui.text.input.ImeAction.Go
+            ),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onGo = { if (text.isNotBlank()) onGo(text) }),
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(c.fill).padding(12.dp),
+            decorationBox = { inner -> Box { if (text.isEmpty()) Text("https://…", style = Ios.body, color = c.secondary); inner() } }
+        )
+        Spacer(Modifier.height(10.dp))
+        Row {
+            Box(
+                Modifier.weight(1f).height(40.dp).pressable(scaleTo = 0.94f) { clip.getText()?.text?.let { text = it.trim() } }
+                    .clip(RoundedCornerShape(20.dp)).background(c.fill),
+                contentAlignment = Alignment.Center
+            ) { Text("Paste", style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = c.label) }
+            Spacer(Modifier.width(10.dp))
+            Box(
+                Modifier.weight(1f).height(40.dp).pressable(enabled = text.isNotBlank(), scaleTo = 0.94f) { onGo(text) }
+                    .clip(RoundedCornerShape(20.dp)).background(if (text.isNotBlank()) c.tint else c.fill),
+                contentAlignment = Alignment.Center
+            ) { Text("Download", style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = if (text.isNotBlank()) Color.White else c.secondary) }
+        }
+    }
+}
+
+
+@Composable
+private fun ToolbarAppearanceGroup() {
+    val s = Store.settings
+    val c = Ios.c
+    IosGroup(
+        "Toolbar",
+        footer = "Auto-hide slides the toolbar away when you haven't touched the screen for a while — any touch brings it back. " +
+            "Match Page Colour tints the glass with the colour of the page behind it."
+    ) {
+        // live preview of the bar over a busy, colourful backdrop
+        Box(
+            Modifier.fillMaxWidth().padding(12.dp).height(96.dp).clip(RoundedCornerShape(20.dp)).wallpaper()
+                .drawBehind {
+                    val cols = listOf(Color(0xFFFF8A65), Color(0xFF64B5F6), Color(0xFFFFD54F), Color(0xFF81C784), Color(0xFFBA68C8))
+                    val w = size.width / 9f
+                    for (k in 0 until 9) drawRect(cols[k % cols.size].copy(alpha = 0.55f), topLeft = androidx.compose.ui.geometry.Offset(k * w, 0f), size = androidx.compose.ui.geometry.Size(w * 0.55f, size.height))
+                    drawRect(Color.White, topLeft = androidx.compose.ui.geometry.Offset(size.width * 0.62f, 0f), size = androidx.compose.ui.geometry.Size(size.width * 0.38f, size.height))
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            AdaptiveGlass(null) {
+                Row(Modifier.padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    GlassCircleButton(Icons.Outlined.ChevronLeft, "Preview back", size = 44.dp) { }
+                    Box(Modifier.weight(1f).height(44.dp).glass(RoundedCornerShape(22.dp)), contentAlignment = Alignment.Center) {
+                        Text("example.com", style = Ios.callout.copy(fontWeight = FontWeight.Medium), color = Ios.c.label)
+                    }
+                    GlassCircleButton(Icons.Outlined.FilterNone, "Preview tabs", size = 44.dp) { }
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(c.separator))
+        IosRow("Liquid Glass", subtitle = "Sheen, light rim and refraction glow", trailing = { IosSwitch(s.barLiquidGlass) { s.barLiquidGlass = it; s.save() } })
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+            Row {
+                Text("Transparency", style = Ios.body, color = c.label, modifier = Modifier.weight(1f))
+                Text("${(s.barTransparency * 100).toInt()}%", style = Ios.body, color = c.secondary)
+            }
+            Slider(
+                s.barTransparency, { s.barTransparency = (it * 20).toInt() / 20f }, onValueChangeFinished = { s.save() },
+                valueRange = 0f..1f,
+                colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = c.tint, inactiveTrackColor = c.fill)
+            )
+            Row {
+                Text("Solid", style = Ios.footnote, color = c.secondary, modifier = Modifier.weight(1f))
+                Text("Clear", style = Ios.footnote, color = c.secondary)
+            }
+        }
+        Box(Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(c.separator))
+        IosRow("Match Page Colour", trailing = { IosSwitch(s.barAdaptiveTint) { s.barAdaptiveTint = it; s.save() } })
+        IosRow("Auto-Hide Toolbar", divider = s.autoHideToolbar, trailing = { IosSwitch(s.autoHideToolbar) { s.autoHideToolbar = it; s.save() } })
+        if (s.autoHideToolbar) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                Row {
+                    Text("Hide After", style = Ios.body, color = c.label, modifier = Modifier.weight(1f))
+                    Text("${s.autoHideSeconds} s", style = Ios.body, color = c.secondary)
+                }
+                Slider(
+                    s.autoHideSeconds.toFloat(), { s.autoHideSeconds = it.toInt() }, onValueChangeFinished = { s.save() },
+                    valueRange = 2f..10f, steps = 7,
+                    colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = c.tint, inactiveTrackColor = c.fill)
+                )
+            }
         }
     }
 }

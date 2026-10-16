@@ -68,16 +68,39 @@ import kotlinx.coroutines.withContext
 private data class Quality(val label: String, val variant: String?, val audio: String?)
 
 @Composable
-fun DownloadDialog(r: DownloadRequest) {
+fun DownloadDialog(r0: DownloadRequest) {
     val c = Ios.c
-    var name by remember(r) { mutableStateOf(r.fileName) }
-    var threads by remember(r) { mutableIntStateOf(Store.settings.threads) }
-    var qualities by remember(r) { mutableStateOf<List<Quality>?>(if (r.kind == DlKind.FILE) emptyList() else null) }
-    var selected by remember(r) { mutableIntStateOf(0) }
-    var error by remember(r) { mutableStateOf<String?>(null) }
+    // the request as resolved by probing the link (real name, size, type)
+    var r by remember(r0) { mutableStateOf(r0) }
+    var resolving by remember(r0) { mutableStateOf(r0.kind == DlKind.FILE && com.ibrowser.download.LinkResolver.schemeOf(r0.url) == com.ibrowser.download.LinkResolver.Scheme.HTTP) }
+    var isPage by remember(r0) { mutableStateOf(false) }
+    var resumable by remember(r0) { mutableStateOf<Boolean?>(null) }
+    var name by remember(r0) { mutableStateOf(r0.fileName) }
+    var nameEdited by remember(r0) { mutableStateOf(false) }
+    var threads by remember(r0) { mutableIntStateOf(Store.settings.threads) }
+    var qualities by remember(r0) { mutableStateOf<List<Quality>?>(if (r0.kind == DlKind.FILE || r0.kind == DlKind.LOCAL) emptyList() else null) }
+    var selected by remember(r0) { mutableIntStateOf(0) }
+    var error by remember(r0) { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(r) {
-        if (r.kind == DlKind.FILE) return@LaunchedEffect
+    LaunchedEffect(r0) {
+        if (!resolving) return@LaunchedEffect
+        val plan = withContext(Dispatchers.IO) {
+            com.ibrowser.download.LinkResolver.resolve(r0.url, r0.userAgent, r0.referer, r0.mime, r0.contentDisposition)
+        }
+        r = r0.copy(
+            fileName = plan.fileName, mime = plan.mime,
+            size = if (plan.size > 0) plan.size else r0.size, kind = plan.kind
+        )
+        if (!nameEdited) name = plan.fileName
+        if (plan.kind != DlKind.FILE) qualities = null
+        isPage = plan.isWebPage
+        resumable = plan.resumable
+        error = plan.error
+        resolving = false
+    }
+
+    LaunchedEffect(r.url, r.kind) {
+        if (r.kind == DlKind.FILE || r.kind == DlKind.LOCAL || r.kind == DlKind.BLOB) return@LaunchedEffect
         val probe = DownloadItem("probe", r.url, "x", r.kind, r.mime, r.userAgent, r.referer, 1)
         qualities = withContext(Dispatchers.IO) {
             runCatching {
@@ -112,12 +135,17 @@ fun DownloadDialog(r: DownloadRequest) {
         ) {
             Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    if (r.kind == DlKind.FILE) "Do you want to download this file?" else "Download this video?",
+                    when {
+                        resolving -> "Checking link…"
+                        isPage -> "This link opens a web page"
+                        r.kind == DlKind.HLS || r.kind == DlKind.DASH -> "Download this video?"
+                        else -> "Do you want to download this file?"
+                    },
                     style = Ios.headline, color = c.label, textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(10.dp))
                 BasicTextField(
-                    name, { name = it }, singleLine = true,
+                    name, { name = it; nameEdited = true }, singleLine = true,
                     textStyle = Ios.subhead.copy(color = c.label, textAlign = TextAlign.Center),
                     cursorBrush = SolidColor(c.tint),
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.fill).padding(10.dp)
@@ -125,16 +153,30 @@ fun DownloadDialog(r: DownloadRequest) {
                 Spacer(Modifier.height(6.dp))
                 Text(
                     buildString {
-                        if (r.size > 0) append(formatBytes(r.size)) else if (r.kind == DlKind.FILE) append("Unknown size")
-                        if (r.kind != DlKind.FILE) append(if (r.kind == DlKind.HLS) "HLS stream → MP4" else "DASH stream → MP4")
-                        append(" · ").append(r.url.substringAfter("://").substringBefore('/'))
+                        when (r.kind) {
+                            DlKind.HLS -> append("HLS stream → MP4")
+                            DlKind.DASH -> append("DASH stream → MP4")
+                            DlKind.LOCAL -> append("File on this device")
+                            else -> append(if (r.size > 0) formatBytes(r.size) else if (resolving) "…" else "Unknown size")
+                        }
+                        r.mime?.takeIf { r.kind == DlKind.FILE && !resolving }?.let { append(" · ").append(it.substringAfter('/').take(20)) }
+                        if (r.kind == DlKind.FILE && resumable == false) append(" · can't pause")
+                        if (r.kind != DlKind.LOCAL) append(" · ").append(r.url.substringAfter("://").substringBefore('/'))
                     },
                     style = Ios.footnote, color = c.secondary, textAlign = TextAlign.Center
                 )
+                if (resolving) { Spacer(Modifier.height(8.dp)); CircularProgressIndicator(Modifier.size(20.dp), color = c.tint, strokeWidth = 2.dp) }
+                if (isPage) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "The server sent a web page instead of a file — often a sign-in, captcha or \"confirm download\" page. Open it, then tap the real download button.",
+                        style = Ios.footnote, color = c.orange, textAlign = TextAlign.Center
+                    )
+                }
                 error?.let { Spacer(Modifier.height(6.dp)); Text(it, style = Ios.footnote, color = c.red, textAlign = TextAlign.Center) }
             }
 
-            if (r.kind != DlKind.FILE) {
+            if (r.kind == DlKind.HLS || r.kind == DlKind.DASH) {
                 Text("QUALITY", style = Ios.footnote, color = c.secondary, modifier = Modifier.padding(start = 22.dp, bottom = 4.dp))
                 val q = qualities
                 if (q == null) {
@@ -160,7 +202,7 @@ fun DownloadDialog(r: DownloadRequest) {
 
             Column(Modifier.padding(horizontal = 22.dp)) {
                 Row {
-                    Text(if (r.kind == DlKind.FILE) "Connections" else "Parallel segments", style = Ios.subhead, color = c.label, modifier = Modifier.weight(1f))
+                    Text(if (r.kind == DlKind.HLS || r.kind == DlKind.DASH) "Parallel segments" else "Connections", style = Ios.subhead, color = c.label, modifier = Modifier.weight(1f))
                     Text("$threads", style = Ios.subhead, color = c.secondary)
                 }
                 Slider(
@@ -169,13 +211,23 @@ fun DownloadDialog(r: DownloadRequest) {
                 )
             }
 
+            if (isPage) {
+                Box(Modifier.fillMaxWidth().height(0.5.dp).background(c.separator))
+                Box(
+                    Modifier.fillMaxWidth().height(52.dp).tapHighlight {
+                        Browser.pendingDownload = null
+                        Browser.load(r.url, Browser.newTab(private = Browser.current?.isPrivate ?: false))
+                    },
+                    contentAlignment = Alignment.Center
+                ) { Text("Open Page", style = Ios.headline, color = c.tint) }
+            }
             Box(Modifier.fillMaxWidth().height(0.5.dp).background(c.separator))
             Row(Modifier.fillMaxWidth().height(52.dp)) {
                 Box(Modifier.weight(1f).fillMaxSize().tapHighlight { Browser.pendingDownload = null }, contentAlignment = Alignment.Center) {
                     Text("Cancel", style = Ios.body, color = c.tint)
                 }
                 Box(Modifier.width(0.5.dp).fillMaxSize().background(c.separator))
-                val canGo = r.kind == DlKind.FILE || (qualities != null)
+                val canGo = !resolving && (r.kind == DlKind.FILE || r.kind == DlKind.LOCAL || qualities != null)
                 Box(
                     Modifier.weight(1f).fillMaxSize().tapHighlight(enabled = canGo) {
                         val q = qualities?.getOrNull(selected)
@@ -183,7 +235,7 @@ fun DownloadDialog(r: DownloadRequest) {
                     },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Download", style = Ios.headline, color = if (canGo) c.tint else c.tertiary)
+                    Text(if (isPage || error != null) "Download Anyway" else "Download", style = Ios.headline, color = if (canGo) c.tint else c.tertiary)
                 }
             }
         }

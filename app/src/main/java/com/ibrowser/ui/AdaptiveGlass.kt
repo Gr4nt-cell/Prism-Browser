@@ -119,14 +119,18 @@ fun AdaptiveGlass(backdrop: Color?, content: @Composable () -> Unit) {
         if (!darkGlass && backdrop != null && lum > 0.80f) ((lum - 0.80f) / 0.12f).coerceIn(0f, 1f) else 0f,
         tween(320), label = "onWhite"
     )
+    val st = com.ibrowser.data.Store.settings
+    // user's transparency: 0 = almost solid, 1 = almost clear (default 0.65 ≈ the original look)
+    val baseAlpha = (0.92f - st.barTransparency * 0.80f).coerceIn(0.10f, 0.95f)
     val tint by animateColorAsState(target, tween(320), label = "glassTint")
     val neutral by animateColorAsState(if (darkGlass) Color(0xFF202023) else Color(0xFFFAFAFC), tween(320), label = "glassNeutral")
     val palette = (if (darkGlass) DarkIos else LightIos).let { p ->
         // keep the tint subtle: a hint of the colour behind, not a solid paint
-        val mixed = lerp(neutral, tint, if (backdrop == null) 0f else 0.42f)
+        val mixed = lerp(neutral, tint, if (backdrop == null || !st.barAdaptiveTint) 0f else 0.42f)
         val frosted = lerp(mixed, Color(0xFFE4DEEF), onWhite)       // lavender-grey on white
         p.copy(
-            glass = frosted.copy(alpha = (if (darkGlass) 0.42f else 0.40f) + onWhite * 0.40f),
+            glass = frosted.copy(alpha = (baseAlpha + (if (darkGlass) 0.02f else 0f) + onWhite * 0.40f * (1f - baseAlpha)).coerceAtMost(0.97f)),
+            liquid = st.barLiquidGlass,
             glassStrong = frosted.copy(alpha = 0.88f + onWhite * 0.06f),
             glassBorder = Color.Black.copy(alpha = if (darkGlass) 0.25f else 0.14f + onWhite * 0.12f),
             glassShadow = 1f + onWhite * 0.9f,

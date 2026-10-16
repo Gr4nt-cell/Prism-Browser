@@ -4,6 +4,34 @@
   var N = window.iBrowserNative;
   if (!N) return;
 
+  // ---------------- Page-generated downloads ----------------
+  // Keep blobs reachable after the site revokes their URL, and remember <a download="name">,
+  // so iBrowser can save files that only exist inside the page.
+  try {
+    window.__ibBlobs = {};
+    var oCreate = URL.createObjectURL, oRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = function (obj) {
+      var u = oCreate.apply(this, arguments);
+      try { if (obj instanceof Blob) window.__ibBlobs[u] = obj; } catch (e) {}
+      return u;
+    };
+    URL.revokeObjectURL = function (u) {
+      var self = this, args = arguments;
+      setTimeout(function () { try { delete window.__ibBlobs[u]; oRevoke.apply(self, args); } catch (e) {} }, 120000);
+    };
+    document.addEventListener("click", function (e) {
+      try {
+        var a = e.target && e.target.closest ? e.target.closest("a[download]") : null;
+        if (a) window.__ibLastDl = { href: a.href, name: a.getAttribute("download") || "" };
+      } catch (x) {}
+    }, true);
+    var oClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      try { if (this.hasAttribute("download")) window.__ibLastDl = { href: this.href, name: this.getAttribute("download") || "" }; } catch (x) {}
+      return oClick.apply(this, arguments);
+    };
+  } catch (e) {}
+
   // ---------------- Cosmetic filtering ----------------
   function addCss() {
     try {

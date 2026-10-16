@@ -36,7 +36,34 @@ class FileDownloader(private val d: DownloadItem) {
 
     private val minSplit = 256 * 1024L
 
+    private class FileChanged : IOException("The file changed on the server")
+    private class FatalHttp(msg: String) : IOException(msg)
+
     suspend fun run() {
+        if (LinkResolver.schemeOf(d.url) == LinkResolver.Scheme.FTP) { LocalCopier(d).run(); return }
+        try {
+            runOnce()
+        } catch (e: FileChanged) {
+            // the server now serves a different file: throw away the partial data and start over
+            d.path?.let { File("$it.part").delete() }
+            File(DownloadManager.workDir(d.id), "parts.json").delete()
+            d.total = -1; d.downloaded = 0; d.etag = null
+            runOnce()
+        }
+    }
+
+    private fun httpError(code: Int): IOException {
+        val msg = when (code) {
+            401, 403 -> "Access denied (HTTP $code) — the link may have expired. Open the page and start the download again"
+            404, 410 -> "The file is no longer on the server (HTTP $code)"
+            429 -> "The server is rate-limiting downloads (HTTP 429) — try fewer connections"
+            in 500..599 -> "Server error (HTTP $code) — try again later"
+            else -> "HTTP $code"
+        }
+        return if (code == 429 || code >= 500) IOException(msg) else FatalHttp(msg)
+    }
+
+    private suspend fun runOnce() {
         val target = d.path?.let { File(it) } ?: DownloadManager.uniqueFile(d.fileName).also {
             d.path = it.absolutePath; d.fileName = it.name
         }
@@ -49,7 +76,10 @@ class FileDownloader(private val d: DownloadItem) {
         if (total <= 0 || !stateFile.exists()) {
             val probe = DownloadManager.request(d, d.url).header("Range", "bytes=0-").build()
             DownloadManager.http.newCall(probe).execute().use { r ->
-                if (!r.isSuccessful) throw IOException("HTTP ${r.code}")
+                if (!r.isSuccessful) throw httpError(r.code)
+                val tag = r.header("ETag") ?: r.header("Last-Modified")
+                if (d.etag != null && tag != null && tag != d.etag && stateFile.exists()) throw FileChanged()
+                d.etag = tag
                 val cr = r.header("Content-Range")
                 total = when {
                     cr != null && cr.contains('/') -> cr.substringAfter('/').trim().toLongOrNull() ?: -1
@@ -161,13 +191,19 @@ class FileDownloader(private val d: DownloadItem) {
         while (p.pos <= p.end) {
             coroutineContext.ensureActive()
             try {
-                val req = DownloadManager.request(d, d.url).header("Range", "bytes=${p.pos}-${p.end}").build()
+                val rb = DownloadManager.request(d, d.url).header("Range", "bytes=${p.pos}-${p.end}")
+                // If-Range: if the file changed the server answers 200 with the whole new file
+                d.etag?.let { if (!it.startsWith("W/")) rb.header("If-Range", it) }
+                val req = rb.build()
                 val call = DownloadManager.http.newCall(req)
                 call.execute().use { r ->
+                    if (r.code == 416) { p.pos = p.end + 1; return }            // already complete
                     if (r.code != 206) {
                         if (r.code == 200 && p.pos == 0L && p.end == d.total - 1) {
                             // server ignored range but we wanted everything: fine
-                        } else throw IOException("HTTP ${r.code} on range")
+                        } else if (r.code == 200) throw FileChanged()
+                        else if (r.code in listOf(401, 403, 404, 410)) throw httpError(r.code)
+                        else throw IOException("HTTP ${r.code} on range")
                     }
                     RandomAccessFile(partFile, "rw").use { raf ->
                         raf.seek(p.pos)
@@ -187,6 +223,7 @@ class FileDownloader(private val d: DownloadItem) {
                 attempt = 0
             } catch (e: IOException) {
                 coroutineContext.ensureActive()
+                if (e is FileChanged || e is FatalHttp) throw e
                 attempt++
                 if (attempt > 8) throw e
                 delay(250L * attempt * attempt)

@@ -156,16 +156,15 @@ object DownloadManager {
         return f
     }
 
-    fun guessName(url: String, contentDisposition: String?, mime: String?): String {
-        var n = URLUtil.guessFileName(url, contentDisposition, mime)
-        n = n.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-        if (n.endsWith(".bin") && mime != null) {
-            MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)?.let { n = n.removeSuffix(".bin") + "." + it }
-        }
-        return n.take(150)
-    }
+    fun guessName(url: String, contentDisposition: String?, mime: String?): String =
+        LinkResolver.bestName(url, contentDisposition, mime)
 
     fun kindFor(url: String, mime: String?): DlKind {
+        when (LinkResolver.schemeOf(url)) {
+            LinkResolver.Scheme.LOCAL -> return DlKind.LOCAL
+            LinkResolver.Scheme.BLOB, LinkResolver.Scheme.DATA -> return DlKind.BLOB
+            else -> {}
+        }
         val u = url.lowercase().substringBefore('?')
         val m = mime?.lowercase() ?: ""
         return when {
@@ -200,8 +199,22 @@ object DownloadManager {
         return item
     }
 
+    /** Add an item created outside the queue (page-generated files). */
+    fun add(item: DownloadItem) {
+        if (items.none { it.id == item.id }) items.add(0, item)
+        save()
+        if (item.status == DlStatus.COMPLETED) onExternalComplete(item)
+    }
+
+    fun onExternalComplete(item: DownloadItem) {
+        item.path?.let { p -> MediaScannerConnection.scanFile(app, arrayOf(p), null, null) }
+        save()
+        com.ibrowser.browser.Browser.toast("Saved ${item.fileName}")
+    }
+
     fun pause(id: String) {
         val d = items.firstOrNull { it.id == id } ?: return
+        if (d.kind == DlKind.BLOB) return               // page-generated: can't be paused
         jobs.remove(id)?.cancel()
         if (d.status != DlStatus.COMPLETED) d.status = DlStatus.PAUSED
         save(); schedule()
@@ -275,6 +288,8 @@ object DownloadManager {
                     DlKind.FILE -> FileDownloader(d).run()
                     DlKind.HLS -> HlsDownloader(d).run()
                     DlKind.DASH -> DashDownloader(d).run()
+                    DlKind.LOCAL -> LocalCopier(d).run()
+                    DlKind.BLOB -> throw java.io.IOException("This file was made by the web page — open the page and tap its download button again")
                 }
                 d.status = DlStatus.COMPLETED
                 d.speed = 0

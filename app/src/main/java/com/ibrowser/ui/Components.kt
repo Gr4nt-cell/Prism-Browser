@@ -136,6 +136,17 @@ fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp,
     val c = Ios.c
     val sheenTop = if (c.dark) 0.16f else 0.60f
     val rim = if (c.dark) 0.10f else 0.35f
+    if (!c.liquid) {
+        // plain frosted bar: flat translucent fill, even hairline, softer shadow — no sheen, rim or refraction tint
+        return this
+            .shadow(elevation * 0.6f, shape, clip = false,
+                ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.35f else 0.08f) * c.glassShadow).coerceAtMost(1f)),
+                spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.45f else 0.14f) * c.glassShadow).coerceAtMost(1f)))
+            .clip(shape)
+            .background(if (strong) c.glassStrong else c.glass)
+            .background(Color.White.copy(alpha = glow * if (c.dark) 0.10f else 0.22f))
+            .border(0.7.dp, if (c.dark) Color.White.copy(alpha = 0.16f) else c.glassBorder, shape)
+    }
     return this
         .shadow(
             elevation, shape, clip = false,

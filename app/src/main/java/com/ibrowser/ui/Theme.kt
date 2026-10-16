@@ -35,6 +35,7 @@ data class IosColors(
     val scrim: Color,
     // App wallpaper (sampled from the user's lavender gradient)
     val glassShadow: Float = 1f,                 // shadow strength multiplier for glass
+    val liquid: Boolean = true,                  // false = plain frosted bar (no sheen, rim or glow)
     val wallTop: Color = Color(0xFFDCC4E6),
     val wallMid: Color = Color(0xFFE8DEF5),
     val wallBottom: Color = Color(0xFFD3DEF0),

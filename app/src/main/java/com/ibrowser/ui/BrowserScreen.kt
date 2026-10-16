@@ -108,7 +108,22 @@ fun BrowserApp() {
         ToolbarLayout.TOP -> navBottom + if (Browser.toolbarCollapsed || Browser.toolbarHidden) 0.dp else 56.dp
     }
 
-    Box(Modifier.fillMaxSize().wallpaper()) {
+    Box(
+        Modifier.fillMaxSize().wallpaper()
+            // watch every touch (also those going into the web page) without consuming it
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val e = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                        when (e.type) {
+                            androidx.compose.ui.input.pointer.PointerEventType.Press -> Browser.onTouch(true)
+                            androidx.compose.ui.input.pointer.PointerEventType.Release -> Browser.onTouch(false)
+                            else -> {}
+                        }
+                    }
+                }
+            }
+    ) {
         // status-bar tint (uses the site's theme-color like Safari)
         val statusColor = tab?.themeColor?.let { Color(it) } ?: c.background
         if (tab?.isStartPage != true) Box(Modifier.fillMaxWidth().height(statusTop).background(statusColor))
@@ -131,27 +146,43 @@ fun BrowserApp() {
             !Browser.showDownloads && !Browser.showSettings && !Browser.showMedia && !Browser.showLibrary &&
             !Browser.showPrivacy && !Browser.showSiteSettings && Browser.pendingDownload == null
         val bottomBackdrop by rememberBackdropColor({ bottomBounds }, SampleSide.ABOVE, sampling)
+
+        // ---- Auto-hide: the toolbar slides away after a few seconds without any touch ----
+        val canAutoHide = sampling && Store.settings.autoHideToolbar && !Browser.findMode && Browser.contextTarget == null
+        LaunchedEffect(Browser.lastTouchAt, canAutoHide, Store.settings.autoHideSeconds) {
+            if (!canAutoHide) { Browser.idleHidden = false; return@LaunchedEffect }
+            kotlinx.coroutines.delay(Store.settings.autoHideSeconds * 1000L)
+            if (Browser.fingersDown == 0) Browser.idleHidden = true
+        }
+        val idle by animateFloatAsState(
+            if (Browser.idleHidden) 1f else 0f,
+            if (Browser.idleHidden) androidx.compose.animation.core.tween(420, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+            else spring(dampingRatio = 0.82f, stiffness = 420f),
+            label = "idleHide"
+        )
+        val hideBottom = Modifier.graphicsLayer { translationY = idle * 120.dp.toPx(); alpha = 1f - idle; scaleX = 1f - idle * 0.06f; scaleY = 1f - idle * 0.06f }
+        val hideTop = Modifier.graphicsLayer { translationY = -idle * 100.dp.toPx(); alpha = 1f - idle }
         val topBackdrop by rememberBackdropColor({ topBounds }, SampleSide.BELOW, sampling && layout == ToolbarLayout.TOP)
 
         if (tab != null && !Browser.findMode) {
             when (layout) {
                 ToolbarLayout.COMPACT -> Box(
                     Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 6.dp)
-                        .onGloballyPositioned { bottomBounds = it.boundsInWindow() }
+                        .onGloballyPositioned { bottomBounds = it.boundsInWindow() }.then(hideBottom)
                 ) {
                     AdaptiveGlass(bottomBackdrop) { CompactToolbar(tab) }
                 }
                 ToolbarLayout.BOTTOM -> Box(
                     Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 6.dp)
-                        .onGloballyPositioned { bottomBounds = it.boundsInWindow() }
+                        .onGloballyPositioned { bottomBounds = it.boundsInWindow() }.then(hideBottom)
                 ) {
                     AdaptiveGlass(bottomBackdrop) { BottomToolbar(tab) }
                 }
                 ToolbarLayout.TOP -> {
-                    Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().onGloballyPositioned { topBounds = it.boundsInWindow() }) {
+                    Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().onGloballyPositioned { topBounds = it.boundsInWindow() }.then(hideTop)) {
                         AdaptiveGlass(topBackdrop) { TopAddressBar(tab) }
                     }
-                    Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().onGloballyPositioned { bottomBounds = it.boundsInWindow() }) {
+                    Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().onGloballyPositioned { bottomBounds = it.boundsInWindow() }.then(hideBottom)) {
                         AdaptiveGlass(bottomBackdrop) { TopLayoutBottomBar(tab) }
                     }
                 }
@@ -182,6 +213,7 @@ fun BrowserApp() {
         if (!Browser.showTabs && !Browser.editing) {
             val lift = when {
                 Browser.findMode -> 64.dp
+                Browser.idleHidden -> 12.dp
                 Browser.toolbarCollapsed || Browser.toolbarHidden -> 46.dp
                 layout == ToolbarLayout.BOTTOM -> 128.dp
                 else -> 68.dp

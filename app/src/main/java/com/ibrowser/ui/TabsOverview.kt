@@ -182,6 +182,9 @@ private fun deckX(rel: Float): Float =
     if (rel >= 0f) rel * 0.93f                       // newer tabs: fan out to the right
     else -0.36f * ln(1f + (-rel) * 1.7f)              // older tabs: pile up behind, on the left
 
+/** Title/close visibility: fully visible for the focused card and newer, fading out as a card sinks into the pile. */
+private fun titleAlpha(rel: Float): Float = if (rel >= -0.3f) 1f else (1f - (-rel - 0.3f) / 0.5f).coerceIn(0f, 1f)
+
 private fun deckScale(rel: Float): Float =
     if (rel >= 0f) 1f else (1f + rel * 0.045f).coerceAtLeast(0.8f)
 
@@ -318,10 +321,11 @@ private fun DeckCard(
                 Text(
                     tab.displayTitle, style = Ios.footnote.copy(fontWeight = FontWeight.SemiBold),
                     color = if (private || c.dark) Color.White else c.label, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    // cards buried in the pile show only their icon, like iOS Recents
+                    modifier = Modifier.weight(1f).graphicsLayer { alpha = titleAlpha(rel()) }
                 )
                 Box(
-                    Modifier.size(26.dp).pressable(scaleTo = 0.8f) {
+                    Modifier.size(26.dp).graphicsLayer { val r = rel(); alpha = if (r > 0.5f) 0f else titleAlpha(r) }.pressable(scaleTo = 0.8f) {
                         scope.launch {
                             dy.animateTo(-screenH, tween(260))
                             Browser.close(tab.id)

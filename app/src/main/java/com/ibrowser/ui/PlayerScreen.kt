@@ -135,8 +135,11 @@ fun MediaPlayerOverlay() {
         enter = slideInVertically(spring(dampingRatio = 0.86f, stiffness = 300f, visibilityThreshold = IntOffset(1, 1))) { it } + fadeIn(tween(160)),
         exit = slideOutVertically(spring(dampingRatio = 1f, stiffness = 380f, visibilityThreshold = IntOffset(1, 1))) { it } + fadeOut(tween(200))
     ) {
-        CompositionLocalProvider(LocalIos provides VideoGlass) {
-            if (Media.hasVideo) VideoPlayer() else AudioPlayer()
+        // Video always sits on dark glass; the audio screen follows the system Light/Dark theme.
+        if (Media.hasVideo) {
+            CompositionLocalProvider(LocalIos provides VideoGlass) { VideoPlayer() }
+        } else {
+            AudioPlayer()
         }
     }
 }
@@ -445,7 +448,7 @@ private fun SmallGlassIcon(icon: ImageVector, active: Boolean, onClick: () -> Un
         Modifier.size(38.dp).pressable(scaleTo = 0.82f, onClick = onClick).clip(CircleShape).background(bg),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = if (active) Color.Black else c.label, modifier = Modifier.size(20.dp))
+        Icon(icon, null, tint = if (active) (if (c.dark) Color.Black else Color.White) else c.label, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -565,16 +568,16 @@ private fun AudioPlayer() {
         while (true) { delay(800); vol = audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / maxVol }
     }
     val accent = remember(Media.artwork, Media.title) { accentFor(Media.artwork, Media.title) }
-    val bgTop by animateColorAsState(lerp(accent, Color.Black, 0.25f), tween(600), label = "bgTop")
-    val bgBottom by animateColorAsState(lerp(accent, Color.Black, 0.82f), tween(600), label = "bgBottom")
+    val bgTop by animateColorAsState(if (c.dark) lerp(accent, Color.Black, 0.25f) else lerp(accent, Color.White, 0.70f), tween(600), label = "bgTop")
+    val bgBottom by animateColorAsState(if (c.dark) lerp(accent, Color.Black, 0.82f) else lerp(accent, Color.White, 0.93f), tween(600), label = "bgBottom")
     val artScale by animateFloatAsState(if (Media.isPlaying) 1f else 0.84f, spring(dampingRatio = 0.62f, stiffness = 260f), label = "artScale")
 
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bgTop, bgBottom)))) {
         // soft light blobs for depth
         Box(
             Modifier.fillMaxSize().drawBehind {
-                drawCircle(Color.White.copy(alpha = 0.10f), radius = size.width * 0.7f, center = Offset(size.width * 0.15f, size.height * 0.1f))
-                drawCircle(accent.copy(alpha = 0.35f), radius = size.width * 0.6f, center = Offset(size.width * 0.95f, size.height * 0.55f))
+                drawCircle(Color.White.copy(alpha = if (c.dark) 0.10f else 0.55f), radius = size.width * 0.7f, center = Offset(size.width * 0.15f, size.height * 0.1f))
+                drawCircle(Color(0xFFFF7399).copy(alpha = 0.35f), radius = size.width * 0.6f, center = Offset(size.width * 0.95f, size.height * 0.55f))
             }
         )
         Column(
@@ -583,7 +586,7 @@ private fun AudioPlayer() {
         ) {
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 GlassCircleButton(Icons.Rounded.KeyboardArrowDown, "Minimize", size = 44.dp) { Media.minimize() }
-                Text("Now Playing", style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = Color.White.copy(alpha = 0.85f), textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                Text("Now Playing", style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = c.label.copy(alpha = 0.85f), textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
                 GlassCircleButton(Icons.Rounded.Close, "Close", size = 44.dp) { Media.stop() }
             }
             Spacer(Modifier.weight(1f))
@@ -591,7 +594,7 @@ private fun AudioPlayer() {
                 val side = maxWidth.coerceAtMost(340.dp)
                 Box(
                     Modifier.size(side).graphicsLayer { scaleX = artScale; scaleY = artScale }
-                        .shadow(40.dp, RoundedCornerShape(30.dp), ambientColor = Color.Black.copy(alpha = 0.5f), spotColor = Color.Black.copy(alpha = 0.6f))
+                        .shadow(40.dp, RoundedCornerShape(30.dp), ambientColor = Color.Black.copy(alpha = if (c.dark) 0.5f else 0.25f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.6f else 0.3f))
                         .clip(RoundedCornerShape(30.dp))
                 ) {
                     Artwork(Media.artwork, Media.title, sizeDp = side, corner = 30)
@@ -599,8 +602,8 @@ private fun AudioPlayer() {
             }
             Spacer(Modifier.weight(1f))
             Column(Modifier.fillMaxWidth()) {
-                Text(Media.title, style = Ios.title3.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold), color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                if (Media.subtitle.isNotBlank()) Text(Media.subtitle, style = Ios.body, color = Color.White.copy(alpha = 0.65f), maxLines = 1)
+                Text(Media.title, style = Ios.title3.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold), color = c.label, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (Media.subtitle.isNotBlank()) Text(Media.subtitle, style = Ios.body, color = c.secondary, maxLines = 1)
             }
             Spacer(Modifier.height(18.dp))
             Column(Modifier.fillMaxWidth().glass(RoundedCornerShape(32.dp)).padding(horizontal = 20.dp, vertical = 16.dp)) {

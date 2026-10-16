@@ -124,7 +124,7 @@ fun PageMenu(visible: Boolean) {
                         val blockedHere = t.host in Store.settings.disabledAdSites
                         MenuItem(
                             Icons.Outlined.Shield,
-                            if (!Store.settings.adBlock) "Ad Blocking Off" else if (blockedHere) "Turn On Ad Blocking Here" else "Turn Off Ad Blocking Here",
+                            if (!Store.settings.adBlock) "Ad Blocking Off" else if (blockedHere) "Resume Ad Blocking" else "Pause Ad Blocking",
                             trailing = if (Store.settings.adBlock && !blockedHere) "${t.blocked} blocked" else null
                         ) { act { if (Store.settings.adBlock) Browser.toggleSiteAdBlock() else Browser.showSettings = true } }
                         MenuItem(Icons.Outlined.Tune, "Website Settings") { act { Browser.showSiteSettings = true } }

@@ -139,8 +139,8 @@ fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp,
     return this
         .shadow(
             elevation, shape, clip = false,
-            ambientColor = Color.Black.copy(alpha = if (c.dark) 0.40f else 0.10f),
-            spotColor = Color.Black.copy(alpha = if (c.dark) 0.55f else 0.18f)
+            ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.40f else 0.10f) * c.glassShadow).coerceAtMost(1f)),
+            spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.55f else 0.18f) * c.glassShadow).coerceAtMost(1f))
         )
         .clip(shape)
         .background(if (strong) c.glassStrong else c.glass)
@@ -167,7 +167,7 @@ fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp,
             Brush.verticalGradient(
                 0f to Color.White.copy(alpha = if (c.dark) 0.48f else 1f),
                 0.5f to Color.White.copy(alpha = if (c.dark) 0.14f else 0.45f),
-                1f to (if (c.dark) Color.White.copy(alpha = 0.24f) else Color.Black.copy(alpha = 0.14f))
+                1f to (if (c.dark) Color.White.copy(alpha = 0.24f) else c.glassBorder)
             ),
             shape
         )

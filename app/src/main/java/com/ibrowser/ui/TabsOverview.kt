@@ -2,6 +2,13 @@ package com.ibrowser.ui
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import kotlinx.coroutines.Job
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -186,19 +193,39 @@ private fun titleAlpha(rel: Float): Float = if (rel >= -0.3f) 1f else (1f - (-re
 private fun deckScale(rel: Float): Float =
     if (rel >= 0f) 1f else (1f + rel * 0.045f).coerceAtLeast(0.8f)
 
+/** Spring used when the deck settles after a swipe: quick, with almost no wobble. */
+private val DeckSettle = spring<Float>(dampingRatio = 0.88f, stiffness = 420f)
+/** Spring used when cards close up the gap left by a closed tab. */
+private val DeckReflow = spring<Float>(dampingRatio = 0.86f, stiffness = 360f)
+
 @Composable
 private fun CardDeck(group: List<BrowserTab>, private: Boolean) {
     val scope = rememberCoroutineScope()
     val view = LocalView.current
     val density = LocalDensity.current
     val startIndex = group.indexOfFirst { it.id == Browser.currentId }.let { if (it < 0) group.size - 1 else it }
-    val pos = remember { Animatable(startIndex.toFloat()) }
-    var lastDetent by remember { mutableStateOf(startIndex) }
 
-    // keep the deck in range when tabs are closed
-    LaunchedEffect(group.size) {
-        val max = (group.size - 1).toFloat()
-        if (pos.value > max) pos.animateTo(max, Motion.smooth)
+    // Deck position in "cards". Plain float state: drags write it directly every frame (no
+    // coroutine per touch event) and a single cancellable animation drives the settle.
+    var pos by remember { mutableFloatStateOf(startIndex.toFloat()) }
+    var settleJob by remember { mutableStateOf<Job?>(null) }
+    var lastDetent by remember { mutableIntStateOf(startIndex) }
+    fun settleTo(target: Float, velocity: Float = 0f, spec: AnimationSpec<Float> = DeckSettle) {
+        settleJob?.cancel()
+        settleJob = scope.launch {
+            animate(pos, target, velocity, spec) { v, _ -> pos = v }
+        }
+    }
+
+    // When a tab is closed, keep the focused card still and let the others glide into the gap.
+    var lastIds by remember { mutableStateOf(group.map { it.id }) }
+    LaunchedEffect(group.map { it.id }) {
+        val ids = group.map { it.id }
+        val removedBefore = lastIds.withIndex().count { (i, id) -> id !in ids && i < pos.roundToInt() }
+        lastIds = ids
+        val max = (group.size - 1).coerceAtLeast(0).toFloat()
+        val target = (pos.roundToInt() - removedBefore).toFloat().coerceIn(0f, max)
+        if (target != pos) settleTo(target, spec = DeckReflow)
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -206,34 +233,38 @@ private fun CardDeck(group: List<BrowserTab>, private: Boolean) {
         val h = constraints.maxHeight.toFloat()
         val cardW = w * 0.72f
         val cardH = (h * 0.74f).coerceAtMost(cardW * 2.05f)
-        val step = cardW * 0.93f
+        // a little less than one card width per card → flicking through feels quicker
+        val step = cardW * 0.82f
         val cardWdp = with(density) { cardW.toDp() }
         val cardHdp = with(density) { cardH.toDp() }
-        val tracker = remember { VelocityTracker() }
+
+        // only compose the cards that can actually be seen
+        val window by remember(group.size) {
+            derivedStateOf { val c = pos.roundToInt(); (c - 6).coerceAtLeast(0)..(c + 3).coerceAtMost(group.size - 1) }
+        }
 
         Box(
             Modifier.fillMaxSize().pointerInput(group.size) {
+                val tracker = VelocityTracker()
                 detectHorizontalDragGestures(
-                    onDragStart = { tracker.resetTracking(); scope.launch { pos.stop() } },
+                    onDragStart = { tracker.resetTracking(); settleJob?.cancel() },
                     onDragEnd = {
-                        val v = -tracker.calculateVelocity().x / step     // cards per second
-                        val projected = pos.value + v * 0.22f
+                        val v = (-tracker.calculateVelocity().x / step).coerceIn(-14f, 14f)   // cards / second
+                        // project the fling so a quick flick can travel several tabs
+                        val projected = pos + v * 0.30f
                         val target = projected.roundToInt().coerceIn(0, group.size - 1).toFloat()
-                        scope.launch { pos.animateTo(target, spring(dampingRatio = 0.84f, stiffness = 210f), initialVelocity = v) }
+                        settleTo(target, v)
                     },
-                    onDragCancel = {
-                        scope.launch { pos.animateTo(pos.value.roundToInt().coerceIn(0, group.size - 1).toFloat(), Motion.smooth) }
-                    }
+                    onDragCancel = { settleTo(pos.roundToInt().coerceIn(0, group.size - 1).toFloat()) }
                 ) { change, dx ->
                     change.consume()
                     tracker.addPosition(change.uptimeMillis, change.position)
                     val max = (group.size - 1).toFloat()
-                    var next = pos.value - dx / step
+                    val delta = -dx / step
                     // rubber-band past the ends
-                    if (next < 0f) next = pos.value - dx / step * 0.35f
-                    if (next > max) next = pos.value - dx / step * 0.35f
-                    scope.launch { pos.snapTo(next.coerceIn(-0.6f, max + 0.6f)) }
-                    val detent = next.roundToInt()
+                    val resist = if ((pos < 0f && delta < 0f) || (pos > max && delta > 0f)) 0.3f else 1f
+                    pos = (pos + delta * resist).coerceIn(-0.7f, max + 0.7f)
+                    val detent = pos.roundToInt()
                     if (detent != lastDetent && detent in group.indices) {
                         lastDetent = detent
                         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -242,18 +273,20 @@ private fun CardDeck(group: List<BrowserTab>, private: Boolean) {
             }
         ) {
             group.forEachIndexed { i, t ->
-                key(t.id) {
+                if (i in window) key(t.id) {
+                    // each card glides to its new slot when tabs before it are closed
+                    val slot by animateFloatAsState(i.toFloat(), DeckReflow, label = "slot")
                     DeckCard(
                         tab = t,
                         index = i,
-                        rel = { i - pos.value },
+                        rel = { slot - pos },
                         cardW = cardW,
                         cardH = cardH,
                         cardWdp = cardWdp,
                         cardHdp = cardHdp,
                         screenH = h,
                         private = private,
-                        onFocus = { scope.launch { pos.animateTo(i.toFloat(), Motion.smooth) } }
+                        onFocus = { settleTo(i.toFloat()) }
                     )
                 }
             }
@@ -277,10 +310,29 @@ private fun DeckCard(
     val c = Ios.c
     val scope = rememberCoroutineScope()
     val view = LocalView.current
-    val dy = remember { Animatable(0f) }          // swipe-up-to-close offset
+    // swipe-up-to-close: finger-tracked offset in a plain float state, one animation at a time
+    var dy by remember { mutableFloatStateOf(0f) }
+    var dyJob by remember { mutableStateOf<Job?>(null) }
+    var closing by remember { mutableStateOf(false) }
     val zoom = remember { Animatable(1f) }        // tap-to-open zoom
-    var pressed by remember { mutableStateOf(false) }
     val press = remember { Animatable(1f) }
+
+    fun animateDy(target: Float, velocity: Float, spec: AnimationSpec<Float>, then: (() -> Unit)? = null) {
+        dyJob?.cancel()
+        dyJob = scope.launch {
+            animate(dy, target, velocity, spec) { v, _ -> dy = v }
+            then?.invoke()
+        }
+    }
+    fun flyAway(velocity: Float) {
+        if (closing) return
+        closing = true
+        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+        // keep the finger's momentum and accelerate off the top; remove the tab as it leaves
+        animateDy(-screenH * 1.15f, velocity.coerceAtMost(-2500f), tween(240, easing = androidx.compose.animation.core.FastOutLinearInEasing)) {
+            Browser.close(tab.id)
+        }
+    }
 
     Box(
         Modifier
@@ -293,15 +345,19 @@ private fun DeckCard(
                 .width(cardWdp)
                 .graphicsLayer {
                     val r = rel()
-                    val s = deckScale(r) * press.value * zoom.value
+                    // lift progress: 0 at rest → 1 when the card has travelled ~60% of the screen
+                    val lift = (-dy / (screenH * 0.6f)).coerceIn(0f, 1f)
+                    val s = deckScale(r) * press.value * zoom.value * (1f - lift * 0.12f)
                     translationX = deckX(r) * cardW
-                    translationY = dy.value + (if (r < 0f) (-r).coerceAtMost(4f) * 6f else 0f)
+                    translationY = dy + (if (r < 0f) (-r).coerceAtMost(4f) * 6f else 0f)
                     scaleX = s; scaleY = s
+                    rotationX = lift * 6f
+                    cameraDistance = 14f * density
                     alpha = when {
                         r < -5f -> 0f
                         r < -4f -> 1f - (-r - 4f)
                         else -> 1f
-                    } * (1f - (-dy.value / (screenH * 0.7f)).coerceIn(0f, 1f))
+                    } * (1f - lift * 0.85f)
                 }
         ) {
             // App-switcher style title above the card
@@ -323,12 +379,9 @@ private fun DeckCard(
                     modifier = Modifier.weight(1f).graphicsLayer { alpha = titleAlpha(rel()) }
                 )
                 Box(
-                    Modifier.size(26.dp).graphicsLayer { val r = rel(); alpha = if (r > 0.5f) 0f else titleAlpha(r) }.pressable(scaleTo = 0.8f) {
-                        scope.launch {
-                            dy.animateTo(-screenH, tween(260))
-                            Browser.close(tab.id)
-                        }
-                    }.clip(CircleShape).background(Color.Black.copy(alpha = 0.28f)),
+                    Modifier.size(26.dp).graphicsLayer { val r = rel(); alpha = if (r > 0.5f) 0f else titleAlpha(r) }
+                        .pressable(scaleTo = 0.8f) { flyAway(-3000f) }
+                        .clip(CircleShape).background(Color.Black.copy(alpha = 0.28f)),
                     contentAlignment = Alignment.Center
                 ) { Icon(Icons.Outlined.Close, "Close", tint = Color.White, modifier = Modifier.size(14.dp)) }
             }
@@ -338,35 +391,33 @@ private fun DeckCard(
                 Modifier
                     .width(cardWdp)
                     .height(cardHdp)
-                    .shadow(28.dp, RoundedCornerShape(30.dp), ambientColor = Color.Black.copy(alpha = 0.25f), spotColor = Color.Black.copy(alpha = 0.35f))
+                    .shadow(20.dp, RoundedCornerShape(30.dp), ambientColor = Color.Black.copy(alpha = 0.22f), spotColor = Color.Black.copy(alpha = 0.3f))
                     .clip(RoundedCornerShape(30.dp))
                     .background(c.card)
                     .pointerInput(tab.id) {
+                        val tracker = VelocityTracker()
                         detectVerticalDragGestures(
+                            onDragStart = { tracker.resetTracking(); dyJob?.cancel() },
                             onDragEnd = {
-                                scope.launch {
-                                    if (dy.value < -cardH * 0.28f) {
-                                        view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                                        dy.animateTo(-screenH * 1.1f, tween(220))
-                                        Browser.close(tab.id)
-                                    } else dy.animateTo(0f, Motion.bouncy)
-                                }
+                                val vy = tracker.calculateVelocity().y      // px / s, negative = upward
+                                // close on a decent upward flick, or when dragged far enough
+                                if (vy < -1200f || dy < -cardH * 0.25f) flyAway(vy)
+                                else animateDy(0f, vy, spring(dampingRatio = 0.7f, stiffness = 420f))
                             },
-                            onDragCancel = { scope.launch { dy.animateTo(0f, Motion.bouncy) } }
+                            onDragCancel = { animateDy(0f, 0f, spring(dampingRatio = 0.7f, stiffness = 420f)) }
                         ) { ch, d ->
+                            if (closing) return@detectVerticalDragGestures
                             ch.consume()
-                            // resist pulling down
-                            val next = dy.value + if (dy.value + d > 0f) d * 0.25f else d
-                            scope.launch { dy.snapTo(next) }
+                            tracker.addPosition(ch.uptimeMillis, ch.position)
+                            // follows the finger 1:1 upward, resists pulling down
+                            dy = (dy + if (dy + d > 0f) d * 0.25f else d).coerceAtLeast(-screenH * 1.2f)
                         }
                     }
                     .pointerInput(tab.id) {
                         detectTapGestures(
                             onPress = {
-                                pressed = true
                                 scope.launch { press.animateTo(0.965f, Motion.press) }
                                 tryAwaitRelease()
-                                pressed = false
                                 scope.launch { press.animateTo(1f, Motion.release) }
                             },
                             onTap = {

@@ -7,6 +7,7 @@ import android.os.Looper
 import android.view.PixelCopy
 import android.view.Window
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -112,14 +113,23 @@ fun AdaptiveGlass(backdrop: Color?, content: @Composable () -> Unit) {
     else if (darkGlass && lum > 0.52f) darkGlass = false
     else if (!darkGlass && lum < 0.36f) darkGlass = true
 
+    // Over white / near-white pages translucent white glass disappears, so the bar switches to a
+    // soft lavender-grey frost with a firmer outline and shadow (0 = normal, 1 = full boost).
+    val onWhite by animateFloatAsState(
+        if (!darkGlass && backdrop != null && lum > 0.80f) ((lum - 0.80f) / 0.12f).coerceIn(0f, 1f) else 0f,
+        tween(320), label = "onWhite"
+    )
     val tint by animateColorAsState(target, tween(320), label = "glassTint")
     val neutral by animateColorAsState(if (darkGlass) Color(0xFF202023) else Color(0xFFFAFAFC), tween(320), label = "glassNeutral")
     val palette = (if (darkGlass) DarkIos else LightIos).let { p ->
         // keep the tint subtle: a hint of the colour behind, not a solid paint
         val mixed = lerp(neutral, tint, if (backdrop == null) 0f else 0.42f)
+        val frosted = lerp(mixed, Color(0xFFE4DEEF), onWhite)       // lavender-grey on white
         p.copy(
-            glass = mixed.copy(alpha = if (darkGlass) 0.42f else 0.40f),
-            glassStrong = mixed.copy(alpha = 0.88f),
+            glass = frosted.copy(alpha = (if (darkGlass) 0.42f else 0.40f) + onWhite * 0.40f),
+            glassStrong = frosted.copy(alpha = 0.88f + onWhite * 0.06f),
+            glassBorder = Color.Black.copy(alpha = if (darkGlass) 0.25f else 0.14f + onWhite * 0.12f),
+            glassShadow = 1f + onWhite * 0.9f,
             // keep the theme's own tint colour for links/buttons
             tint = if (darkGlass) DarkIos.tint else LightIos.tint
         )

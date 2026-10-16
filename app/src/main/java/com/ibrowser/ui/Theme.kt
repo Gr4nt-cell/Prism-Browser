@@ -34,6 +34,7 @@ data class IosColors(
     val glassHighlight: Color,
     val scrim: Color,
     // App wallpaper (sampled from the user's lavender gradient)
+    val glassShadow: Float = 1f,                 // shadow strength multiplier for glass
     val wallTop: Color = Color(0xFFDCC4E6),
     val wallMid: Color = Color(0xFFE8DEF5),
     val wallBottom: Color = Color(0xFFD3DEF0),
@@ -57,7 +58,7 @@ val LightIos = IosColors(
     orange = Color(0xFFFF9500),
     glass = Color(0x6BFBF8FD),
     glassStrong = Color(0xD9FBF8FD),
-    glassBorder = Color(0x33000000),
+    glassBorder = Color(0x24000000),
     glassHighlight = Color(0xCCFFFFFF),
     scrim = Color(0x26000000)
 )

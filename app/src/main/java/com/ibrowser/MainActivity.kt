@@ -29,8 +29,8 @@ class MainActivity : ComponentActivity() {
         cb?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(res.resultCode, res.data))
     }
 
-    private val notifPermission = registerForActivityResult(ActivityResultContracts.RequestPermissionResult()) { }
-    private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermissionResult()) { }
+    private val notifPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()

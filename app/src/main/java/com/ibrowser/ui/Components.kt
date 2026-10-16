@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -217,7 +219,7 @@ fun IosRow(
             trailing?.invoke()
             if (showChevron) {
                 Spacer(Modifier.width(6.dp))
-                Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Ios.c.tertiary, modifier = Modifier.size(22.dp))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Ios.c.tertiary, modifier = Modifier.size(22.dp))
             }
         }
         if (divider) Box(Modifier.fillMaxWidth().padding(start = if (icon != null) 60.dp else 16.dp).height(0.5.dp).background(Ios.c.separator))

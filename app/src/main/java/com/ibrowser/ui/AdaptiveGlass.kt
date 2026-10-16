@@ -118,7 +118,7 @@ fun AdaptiveGlass(backdrop: Color?, content: @Composable () -> Unit) {
         // keep the tint subtle: a hint of the colour behind, not a solid paint
         val mixed = lerp(neutral, tint, if (backdrop == null) 0f else 0.42f)
         p.copy(
-            glass = mixed.copy(alpha = if (darkGlass) 0.58f else 0.60f),
+            glass = mixed.copy(alpha = if (darkGlass) 0.42f else 0.40f),
             glassStrong = mixed.copy(alpha = 0.88f),
             // keep the theme's own tint colour for links/buttons
             tint = if (darkGlass) DarkIos.tint else LightIos.tint

@@ -101,8 +101,8 @@ fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp,
     return this
         .shadow(
             elevation, shape, clip = false,
-            ambientColor = Color.Black.copy(alpha = if (c.dark) 0.30f else 0.07f),
-            spotColor = Color.Black.copy(alpha = if (c.dark) 0.40f else 0.11f)
+            ambientColor = Color.Black.copy(alpha = if (c.dark) 0.40f else 0.10f),
+            spotColor = Color.Black.copy(alpha = if (c.dark) 0.55f else 0.18f)
         )
         .clip(shape)
         .background(if (strong) c.glassStrong else c.glass)
@@ -124,11 +124,12 @@ fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp,
         // press glow
         .background(Color.White.copy(alpha = glow * if (c.dark) 0.14f else 0.30f))
         .border(
-            0.8.dp,
+            1.dp,
+            // crisp edge: bright top rim, defined lower outline so the glass reads on any page
             Brush.verticalGradient(
-                0f to Color.White.copy(alpha = if (c.dark) 0.34f else 0.95f),
-                0.5f to Color.White.copy(alpha = if (c.dark) 0.08f else 0.35f),
-                1f to (if (c.dark) Color.White.copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.06f))
+                0f to Color.White.copy(alpha = if (c.dark) 0.48f else 1f),
+                0.5f to Color.White.copy(alpha = if (c.dark) 0.14f else 0.45f),
+                1f to (if (c.dark) Color.White.copy(alpha = 0.24f) else Color.Black.copy(alpha = 0.14f))
             ),
             shape
         )

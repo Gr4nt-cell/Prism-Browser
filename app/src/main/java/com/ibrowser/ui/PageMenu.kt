@@ -172,6 +172,11 @@ fun ContextMenuOverlay(target: ContextTarget?) {
                 Spacer(Modifier.height(10.dp))
                 Column(Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp), strong = true).padding(vertical = 4.dp)) {
                     tgt.link?.let { link ->
+                        if (com.ibrowser.player.Media.isMediaUrl(link)) {
+                            MenuItem(Icons.Outlined.Movie, "Play in iBrowser") {
+                                act { com.ibrowser.player.Media.play(link, link.substringAfterLast('/').substringBefore('?'), referer = tab?.url, userAgent = tab?.webView?.settings?.userAgentString) }
+                            }
+                        }
                         MenuItem(Icons.AutoMirrored.Outlined.OpenInNew, "Open in New Tab") {
                             act { Browser.newTab(link, private = tab?.isPrivate ?: false, parent = tgt.tabId, select = false); Browser.toast("Opened in background") }
                         }

@@ -13,6 +13,7 @@ class App : Application() {
         Store.init(this)
         Browser.init(this)
         DownloadManager.init(this)
+        com.ibrowser.player.Media.init(this)
         Thread {
             AdBlocker.instance.load(this)
             if (FilterLists.needsUpdate()) runCatching { FilterLists.update(this) }

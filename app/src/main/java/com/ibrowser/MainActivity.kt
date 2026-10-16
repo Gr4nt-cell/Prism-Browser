@@ -18,6 +18,13 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.ibrowser.browser.Browser
+import com.ibrowser.player.Media
+import android.app.PictureInPictureParams
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import android.provider.OpenableColumns
+import android.util.Rational
+import android.view.WindowManager
 import com.ibrowser.ui.BrowserApp
 import com.ibrowser.ui.IBrowserTheme
 
@@ -85,6 +92,25 @@ class MainActivity : ComponentActivity() {
         if (i.getBooleanExtra("openDownloads", false)) {
             Browser.showDownloads = true; return
         }
+        if (i.getBooleanExtra("openPlayer", false)) {
+            if (Media.active) Media.visible = true
+            return
+        }
+        // Media files opened from other apps (Files, Gallery, …) play in the glass player
+        val type = i.type ?: i.data?.let { contentResolver.getType(it) }
+        val scheme = i.data?.scheme
+        if (i.action == Intent.ACTION_VIEW && (scheme == "content" || scheme == "file") &&
+            (type?.startsWith("video/") == true || type?.startsWith("audio/") == true)
+        ) {
+            val uri = i.data!!
+            val name = runCatching {
+                contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                    if (c.moveToFirst()) c.getString(0) else null
+                }
+            }.getOrNull() ?: uri.lastPathSegment ?: "Media"
+            Media.play(uri.toString(), name.substringBeforeLast('.'), mime = type)
+            return
+        }
         val url: String? = when (i.action) {
             Intent.ACTION_VIEW -> i.dataString
             Intent.ACTION_WEB_SEARCH -> i.getStringExtra(SearchManager.QUERY)
@@ -97,6 +123,43 @@ class MainActivity : ComponentActivity() {
             else Browser.load(url, Browser.newTab(private = false))
             Browser.showTabs = false
         }
+    }
+
+    /** Video keeps playing in a floating window when you leave the app. */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (Media.visible && Media.isPlaying && Media.hasVideo) enterPip()
+    }
+
+    fun enterPip() {
+        if (Build.VERSION.SDK_INT < 26) return
+        val ratio = Media.videoAspect.coerceIn(0.42f, 2.39f)
+        val w = (ratio * 1000).toInt()
+        runCatching {
+            enterPictureInPictureMode(
+                PictureInPictureParams.Builder().setAspectRatio(Rational(w, 1000)).build()
+            )
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        Media.inPip = isInPictureInPictureMode
+    }
+
+    /** null = follow the sensor, true = landscape, false = portrait. */
+    fun lockOrientation(landscape: Boolean?) {
+        requestedOrientation = when (landscape) {
+            true -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            false -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            null -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+
+    fun setBrightness(level: Float?) {
+        val lp = window.attributes
+        lp.screenBrightness = level ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+        window.attributes = lp
     }
 
     override fun onStop() {

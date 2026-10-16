@@ -246,6 +246,7 @@ object Browser {
 
     /** Called by the system back button. Returns false if nothing consumed it. */
     fun handleBack(): Boolean {
+        if (com.ibrowser.player.Media.visible) { com.ibrowser.player.Media.minimize(); return true }
         when {
             customView != null -> { exitFullscreen(); return true }
             contextTarget != null -> { contextTarget = null; return true }

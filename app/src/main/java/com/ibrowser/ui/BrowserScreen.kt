@@ -178,8 +178,20 @@ fun BrowserApp() {
         LibrarySheet(Browser.showLibrary)
         ReaderOverlay(Browser.reader)
         ContextMenuOverlay(Browser.contextTarget)
+        // ---- Media: mini player above the toolbar, full glass player on top ----
+        if (!Browser.showTabs && !Browser.editing) {
+            val lift = when {
+                Browser.findMode -> 64.dp
+                Browser.toolbarCollapsed || Browser.toolbarHidden -> 46.dp
+                layout == ToolbarLayout.BOTTOM -> 128.dp
+                else -> 68.dp
+            }
+            val liftAnim by androidx.compose.animation.core.animateDpAsState(lift, androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 380f), label = "miniLift")
+            MiniPlayer(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = liftAnim))
+        }
         Browser.pendingDownload?.let { DownloadDialog(it) }
         FullscreenOverlay()
+        MediaPlayerOverlay()
     }
 }
 

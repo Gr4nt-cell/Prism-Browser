@@ -143,10 +143,25 @@ private fun DownloadRow(d: DownloadItem) {
     val c = Ios.c
     val ctx = LocalContext.current
     var menu by remember { mutableStateOf(false) }
+    fun openExternal() {
+        val f = File(d.path ?: return)
+        runCatching {
+            val uri = FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)
+            val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(f.extension.lowercase()) ?: "*/*"
+            ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Open with").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.onFailure { Browser.toast("No app can open this file") }
+    }
     fun open() {
         val p = d.path ?: return
         val f = File(p)
         if (!f.exists()) { Browser.toast("File was moved or deleted"); return }
+        val mimeGuess = MimeTypeMap.getSingleton().getMimeTypeFromExtension(f.extension.lowercase())
+        if (com.ibrowser.player.Media.isPlayableFile(f.name, mimeGuess)) {
+            Browser.showDownloads = false
+            com.ibrowser.player.Media.playFile(f.absolutePath, f.nameWithoutExtension)
+            return
+        }
         runCatching {
             val uri = FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f)
             val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(f.extension.lowercase()) ?: "*/*"
@@ -211,6 +226,7 @@ private fun DownloadRow(d: DownloadItem) {
             if (d.status == DlStatus.COMPLETED) {
                 DropdownMenuItem({ Text("Open") }, { menu = false; open() })
                 DropdownMenuItem({ Text("Share File") }, { menu = false; shareFile() })
+                DropdownMenuItem({ Text("Open With…") }, { menu = false; openExternal() })
             }
             DropdownMenuItem({ Text("Copy Download Link") }, { menu = false; Browser.copy(d.url) })
             DropdownMenuItem({ Text("Go to Page") }, { menu = false; d.referer?.let { Browser.load(it, Browser.newTab()) }; Browser.showDownloads = false })
@@ -305,19 +321,21 @@ fun MediaSheet(visible: Boolean) {
                             Icon(Icons.Outlined.ContentCopy, "Copy link", tint = c.tint, modifier = Modifier.size(18.dp))
                         }
                         Spacer(Modifier.width(8.dp))
-                        val ctx = LocalContext.current
                         Box(
-                            Modifier.size(38.dp).clip(CircleShape).background(c.fill).clickable {
-                                runCatching {
-                                    val type = when (m.kind) {
-                                        MediaKind.HLS -> "application/x-mpegURL"; MediaKind.DASH -> "application/dash+xml"
-                                        MediaKind.AUDIO -> "audio/*"; else -> "video/*"
-                                    }
-                                    ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW).setDataAndType(android.net.Uri.parse(m.url), type), "Play with"))
+                            Modifier.size(38.dp).pressable(scaleTo = 0.8f) {
+                                val mime = when (m.kind) {
+                                    MediaKind.HLS -> androidx.media3.common.MimeTypes.APPLICATION_M3U8
+                                    MediaKind.DASH -> androidx.media3.common.MimeTypes.APPLICATION_MPD
+                                    else -> null
                                 }
-                            },
+                                Browser.showMedia = false
+                                com.ibrowser.player.Media.play(
+                                    m.url, t?.title?.ifBlank { null } ?: m.pageTitle.ifBlank { "Media" },
+                                    referer = m.pageUrl, userAgent = t?.webView?.settings?.userAgentString, mime = mime
+                                )
+                            }.clip(CircleShape).background(c.tint),
                             contentAlignment = Alignment.Center
-                        ) { Icon(Icons.Outlined.PlayArrow, "Play in external player", tint = c.tint, modifier = Modifier.size(20.dp)) }
+                        ) { Icon(Icons.Outlined.PlayArrow, "Play", tint = Color.White, modifier = Modifier.size(22.dp)) }
                     }
                 }
             }

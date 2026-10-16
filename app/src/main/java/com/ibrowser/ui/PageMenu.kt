@@ -62,18 +62,19 @@ import com.ibrowser.download.DownloadManager
 
 @Composable
 fun PageMenu(visible: Boolean) {
-    AnimatedVisibility(visible, enter = fadeIn(tween(150)), exit = fadeOut(tween(150))) {
+    AnimatedVisibility(visible, enter = fadeIn(tween(140)), exit = fadeOut(tween(200))) {
         val c = Ios.c
         val t = Browser.current ?: return@AnimatedVisibility
         fun act(f: () -> Unit) { Browser.showPageMenu = false; f() }
         Box(Modifier.fillMaxSize().background(c.scrim.copy(alpha = 0.12f)).clickable(interactionSource = null, indication = null) { Browser.showPageMenu = false }) {
-            AnimatedVisibility(
-                true,
-                enter = scaleIn(initialScale = 0.6f, transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.1f, 1f)),
-                exit = scaleOut(),
-                modifier = Modifier.align(
-                    if (Store.settings.layout == com.ibrowser.data.ToolbarLayout.TOP) Alignment.TopStart else Alignment.BottomStart
-                )
+            val top = Store.settings.layout == com.ibrowser.data.ToolbarLayout.TOP
+            val origin = androidx.compose.ui.graphics.TransformOrigin(0.08f, if (top) 0f else 1f)
+            Box(
+                Modifier.align(if (top) Alignment.TopStart else Alignment.BottomStart)
+                    .animateEnterExit(
+                        enter = scaleIn(Motion.bouncy, initialScale = 0.3f, transformOrigin = origin) + fadeIn(tween(120)),
+                        exit = scaleOut(Motion.smooth, targetScale = 0.4f, transformOrigin = origin) + fadeOut(tween(140))
+                    )
             ) {
                 Column(
                     Modifier
@@ -140,7 +141,7 @@ fun PageMenu(visible: Boolean) {
 @Composable
 private fun SmallBox(modifier: Modifier, onClick: () -> Unit, content: @Composable () -> Unit) {
     Box(
-        modifier.height(40.dp).clip(RoundedCornerShape(14.dp)).background(Ios.c.fill).clickable(onClick = onClick),
+        modifier.height(40.dp).pressable(scaleTo = 0.9f, onClick = onClick).clip(RoundedCornerShape(14.dp)).background(Ios.c.fill),
         contentAlignment = Alignment.Center
     ) { content() }
 }
@@ -156,7 +157,12 @@ fun ContextMenuOverlay(target: ContextTarget?) {
             Modifier.fillMaxSize().background(c.scrim.copy(alpha = 0.45f)).clickable(interactionSource = null, indication = null) { Browser.contextTarget = null },
             contentAlignment = Alignment.Center
         ) {
-            Column(Modifier.padding(24.dp).width(310.dp)) {
+            Column(
+                Modifier.padding(24.dp).width(310.dp).animateEnterExit(
+                    enter = scaleIn(Motion.bouncy, initialScale = 0.85f) + fadeIn(tween(140)),
+                    exit = scaleOut(Motion.smooth, targetScale = 0.9f) + fadeOut(tween(140))
+                )
+            ) {
                 // preview card
                 Column(Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp), strong = true).padding(16.dp)) {
                     Text(if (tgt.link != null) "Link" else "Image", style = Ios.footnote.copy(fontWeight = FontWeight.SemiBold), color = c.secondary)

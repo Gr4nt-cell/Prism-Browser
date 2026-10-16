@@ -67,7 +67,11 @@ import java.net.URLEncoder
 
 @Composable
 fun AddressEntry(visible: Boolean) {
-    AnimatedVisibility(visible, enter = fadeIn(), exit = fadeOut()) {
+    AnimatedVisibility(
+        visible,
+        enter = fadeIn(androidx.compose.animation.core.tween(180)) + androidx.compose.animation.scaleIn(Motion.smooth, initialScale = 1.04f),
+        exit = fadeOut(androidx.compose.animation.core.tween(160)) + androidx.compose.animation.scaleOut(Motion.smooth, targetScale = 1.04f)
+    ) {
         val c = Ios.c
         val tab = Browser.current
         val initial = if (tab == null || tab.isStartPage) "" else tab.url
@@ -167,7 +171,7 @@ fun AddressEntry(visible: Boolean) {
                             }
                         )
                         if (tf.text.isNotEmpty()) {
-                            Box(Modifier.size(30.dp).clip(CircleShape).clickable { tf = TextFieldValue("") }, contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(30.dp).pressable(scaleTo = 0.8f) { tf = TextFieldValue("") }, contentAlignment = Alignment.Center) {
                                 Icon(Icons.Outlined.Cancel, "Clear", tint = c.secondary, modifier = Modifier.size(18.dp))
                             }
                         }
@@ -195,7 +199,7 @@ private fun SuggestionRow(
 ) {
     val c = Ios.c
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 11.dp),
+        Modifier.fillMaxWidth().tapHighlight(onClick = onClick).padding(horizontal = 20.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, null, tint = c.secondary, modifier = Modifier.size(20.dp))
@@ -205,7 +209,7 @@ private fun SuggestionRow(
             if (sub != null) Text(sub, style = Ios.footnote, color = c.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (onFill != null) {
-            Box(Modifier.size(32.dp).clip(CircleShape).clickable(onClick = onFill), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(32.dp).pressable(scaleTo = 0.8f, onClick = onFill), contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.NorthWest, "Fill", tint = c.secondary, modifier = Modifier.size(18.dp))
             }
         }
@@ -216,7 +220,7 @@ private fun SuggestionRow(
 private fun SiteSuggestion(s: Site) {
     val c = Ios.c
     Row(
-        Modifier.fillMaxWidth().clickable { Browser.load(s.url) }.padding(horizontal = 20.dp, vertical = 9.dp),
+        Modifier.fillMaxWidth().tapHighlight { Browser.load(s.url) }.padding(horizontal = 20.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         SiteTile(s.url, s.title, size = 30.dp, corner = 7.dp)
@@ -236,7 +240,7 @@ private fun FavoritesMini() {
             Row(Modifier.fillMaxWidth()) {
                 row.forEach { s ->
                     Column(
-                        Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable { Browser.load(s.url) }.padding(vertical = 8.dp),
+                        Modifier.weight(1f).pressable(scaleTo = 0.88f) { Browser.load(s.url) }.padding(vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         SiteTile(s.url, s.title, size = 54.dp, corner = 13.dp)

@@ -49,11 +49,11 @@ val LightIos = IosColors(
     red = Color(0xFFFF3B30),
     green = Color(0xFF34C759),
     orange = Color(0xFFFF9500),
-    glass = Color(0xC7F7F7F9),
-    glassStrong = Color(0xF2FAFAFC),
+    glass = Color(0x8CF9F9FB),
+    glassStrong = Color(0xD9F9F9FB),
     glassBorder = Color(0x33000000),
     glassHighlight = Color(0xCCFFFFFF),
-    scrim = Color(0x33000000)
+    scrim = Color(0x26000000)
 )
 
 val DarkIos = IosColors(
@@ -70,8 +70,8 @@ val DarkIos = IosColors(
     red = Color(0xFFFF453A),
     green = Color(0xFF30D158),
     orange = Color(0xFFFF9F0A),
-    glass = Color(0xC21C1C1E),
-    glassStrong = Color(0xF02C2C2E),
+    glass = Color(0x8A26262A),
+    glassStrong = Color(0xDE2A2A2E),
     glassBorder = Color(0x40FFFFFF),
     glassHighlight = Color(0x33FFFFFF),
     scrim = Color(0x66000000)

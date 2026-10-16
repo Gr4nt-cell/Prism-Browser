@@ -1,6 +1,29 @@
 package com.ibrowser.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.unit.IntOffset
+import android.os.Build
+import android.view.HapticFeedbackConstants
+import android.view.View
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -56,45 +79,145 @@ import androidx.compose.ui.unit.sp
 import com.ibrowser.data.hostOf
 import kotlin.math.abs
 
-/** Liquid-glass surface: translucent fill, specular top highlight and hairline border. */
+/** Shared spring specs so motion feels consistent everywhere. */
+object Motion {
+    val press = spring<Float>(dampingRatio = 0.5f, stiffness = 700f)
+    val release = spring<Float>(dampingRatio = 0.45f, stiffness = 380f)
+    val smooth = spring<Float>(dampingRatio = 0.82f, stiffness = 320f)
+    val bouncy = spring<Float>(dampingRatio = 0.68f, stiffness = 380f)
+    fun <T> soft() = spring<T>(dampingRatio = 0.86f, stiffness = 300f)
+}
+
+/**
+ * Liquid-glass surface: very translucent fill, soft specular sheen at the top, a faint
+ * refraction rim along the bottom edge, a light gradient hairline and a wide soft shadow.
+ * [glow] (0..1) brightens the glass while it is pressed, like iOS 26/27 Liquid Glass.
+ */
 @Composable
-fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 14.dp): Modifier {
+fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp, glow: Float = 0f): Modifier {
     val c = Ios.c
+    val sheenTop = if (c.dark) 0.16f else 0.60f
+    val rim = if (c.dark) 0.10f else 0.35f
     return this
-        .shadow(elevation, shape, clip = false, ambientColor = Color.Black.copy(alpha = 0.18f), spotColor = Color.Black.copy(alpha = 0.22f))
+        .shadow(
+            elevation, shape, clip = false,
+            ambientColor = Color.Black.copy(alpha = if (c.dark) 0.30f else 0.07f),
+            spotColor = Color.Black.copy(alpha = if (c.dark) 0.40f else 0.11f)
+        )
         .clip(shape)
         .background(if (strong) c.glassStrong else c.glass)
+        // soft specular sheen
         .background(
             Brush.verticalGradient(
-                listOf(c.glassHighlight.copy(alpha = c.glassHighlight.alpha * 0.55f), Color.Transparent, Color.Transparent)
+                0f to Color.White.copy(alpha = sheenTop * 0.55f),
+                0.45f to Color.White.copy(alpha = 0f),
+                1f to Color.White.copy(alpha = 0f)
             )
         )
+        // refraction rim at the bottom edge
+        .background(
+            Brush.verticalGradient(
+                0.70f to Color.White.copy(alpha = 0f),
+                1f to Color.White.copy(alpha = rim * 0.35f)
+            )
+        )
+        // press glow
+        .background(Color.White.copy(alpha = glow * if (c.dark) 0.14f else 0.30f))
         .border(
-            0.6.dp,
-            Brush.verticalGradient(listOf(c.glassHighlight, c.glassBorder.copy(alpha = 0.10f), c.glassBorder.copy(alpha = 0.18f))),
+            0.8.dp,
+            Brush.verticalGradient(
+                0f to Color.White.copy(alpha = if (c.dark) 0.34f else 0.95f),
+                0.5f to Color.White.copy(alpha = if (c.dark) 0.08f else 0.35f),
+                1f to (if (c.dark) Color.White.copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.06f))
+            ),
             shape
         )
 }
 
-/** Press-to-shrink clickable like iOS controls. */
-@Composable
-fun Modifier.pressable(enabled: Boolean = true, onLongClick: (() -> Unit)? = null, onClick: () -> Unit): Modifier {
-    val src = remember { MutableInteractionSource() }
-    val pressed by src.collectIsPressedAsState()
-    val m = this.scale(if (pressed) 0.92f else 1f)
-    return if (onLongClick != null) {
-        m.then(
-            Modifier.combinedClickableCompat(src, enabled, onClick, onLongClick)
-        )
-    } else m.clickable(interactionSource = src, indication = null, enabled = enabled, onClick = onClick)
+/** Light tick on touch-down, like iOS controls. */
+fun View.tick() {
+    performHapticFeedback(if (Build.VERSION.SDK_INT >= 27) HapticFeedbackConstants.KEYBOARD_PRESS else HapticFeedbackConstants.VIRTUAL_KEY)
 }
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-private fun Modifier.combinedClickableCompat(
-    src: MutableInteractionSource, enabled: Boolean, onClick: () -> Unit, onLongClick: () -> Unit
-): Modifier = this.then(
-    Modifier.combinedClickable(interactionSource = src, indication = null, enabled = enabled, onClick = onClick, onLongClick = onLongClick)
-)
+/**
+ * Instant-response press: scales down with a spring the moment a finger lands (no tap delay),
+ * springs back with a little overshoot on release, gives a haptic tick, supports long-press.
+ */
+@Composable
+fun Modifier.pressable(
+    enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
+    scaleTo: Float = 0.86f,
+    haptic: Boolean = true,
+    onPressedChange: ((Boolean) -> Unit)? = null,
+    onClick: () -> Unit
+): Modifier {
+    var pressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(if (pressed) scaleTo else 1f, if (pressed) Motion.press else Motion.release, label = "press")
+    val view = LocalView.current
+    val click by rememberUpdatedState(onClick)
+    val long by rememberUpdatedState(onLongClick)
+    val change by rememberUpdatedState(onPressedChange)
+    return this
+        .graphicsLayer { scaleX = scale; scaleY = scale }
+        .pointerInput(enabled, onLongClick != null) {
+            if (!enabled) return@pointerInput
+            detectTapGestures(
+                onPress = {
+                    pressed = true; change?.invoke(true)
+                    if (haptic) view.tick()
+                    tryAwaitRelease()
+                    pressed = false; change?.invoke(false)
+                },
+                onLongPress = if (onLongClick != null) {
+                    { view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); long?.invoke() }
+                } else null,
+                onTap = { click() }
+            )
+        }
+}
+
+/**
+ * iOS table-cell style feedback: the row tints the moment it is pressed (after a tiny delay so
+ * scrolling doesn't flash rows) and fades back out on release.
+ */
+@Composable
+fun Modifier.tapHighlight(
+    enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit
+): Modifier {
+    var pressed by remember { mutableStateOf(false) }
+    val fill = Ios.c.fill
+    val bg by animateColorAsState(
+        if (pressed) fill else fill.copy(alpha = 0f),
+        if (pressed) tween(60) else tween(260),
+        label = "hl"
+    )
+    val view = LocalView.current
+    val click by rememberUpdatedState(onClick)
+    val long by rememberUpdatedState(onLongClick)
+    return this
+        .drawBehind { drawRect(bg) }
+        .pointerInput(enabled, onLongClick != null) {
+            if (!enabled) return@pointerInput
+            detectTapGestures(
+                onPress = {
+                    coroutineScope {
+                        val delayed = launch { delay(45); pressed = true }
+                        val released = tryAwaitRelease()
+                        delayed.cancel()
+                        if (released && !pressed) { pressed = true; delay(90) }
+                        pressed = false
+                    }
+                },
+                onLongPress = if (onLongClick != null) {
+                    { view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS); long?.invoke() }
+                } else null,
+                onTap = { click() }
+            )
+        }
+}
 
 @Composable
 fun GlassCircleButton(
@@ -107,11 +230,13 @@ fun GlassCircleButton(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
+    var pressed by remember { mutableStateOf(false) }
+    val glow by animateFloatAsState(if (pressed) 1f else 0f, Motion.smooth, label = "glow")
     Box(
         modifier
             .size(size)
-            .glass(CircleShape)
-            .pressable(enabled, onLongClick, onClick),
+            .pressable(enabled, onLongClick, scaleTo = 0.84f, onPressedChange = { pressed = it }, onClick = onClick)
+            .glass(CircleShape, glow = glow),
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription, tint = if (enabled) tint else tint.copy(alpha = 0.3f), modifier = Modifier.size(size * 0.45f))
@@ -127,9 +252,37 @@ fun ToolbarIcon(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
-    Box(modifier.size(44.dp).pressable(enabled, onLongClick, onClick), contentAlignment = Alignment.Center) {
+    var pressed by remember { mutableStateOf(false) }
+    val glow by animateFloatAsState(if (pressed) 1f else 0f, Motion.smooth, label = "glow")
+    Box(
+        modifier.size(44.dp)
+            .pressable(enabled, onLongClick, scaleTo = 0.8f, onPressedChange = { pressed = it }, onClick = onClick)
+            .drawBehind { if (glow > 0f) drawCircle(Color.White.copy(alpha = 0.22f * glow), radius = size.minDimension / 2f) },
+        contentAlignment = Alignment.Center
+    ) {
         Icon(icon, desc, tint = if (enabled) Ios.c.tint else Ios.c.tertiary, modifier = Modifier.size(24.dp))
     }
+}
+
+/** Small circular icon button used inside glass bars (no glass of its own). */
+@Composable
+fun InlineIconButton(
+    icon: ImageVector,
+    desc: String?,
+    size: Dp = 40.dp,
+    iconSize: Dp = 20.dp,
+    tint: Color = Ios.c.label,
+    onClick: () -> Unit
+) {
+    var pressed by remember { mutableStateOf(false) }
+    val glow by animateFloatAsState(if (pressed) 1f else 0f, Motion.smooth, label = "glow")
+    val fill = Ios.c.fill
+    Box(
+        Modifier.size(size)
+            .pressable(scaleTo = 0.8f, onPressedChange = { pressed = it }, onClick = onClick)
+            .drawBehind { if (glow > 0f) drawCircle(fill.copy(alpha = fill.alpha * 2.2f * glow)) },
+        contentAlignment = Alignment.Center
+    ) { Icon(icon, desc, tint = tint, modifier = Modifier.size(iconSize)) }
 }
 
 /** Favicon or coloured letter tile (Safari Favorites style). */
@@ -199,7 +352,7 @@ fun IosRow(
         Row(
             Modifier
                 .fillMaxWidth()
-                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .then(if (onClick != null) Modifier.tapHighlight(onClick = onClick) else Modifier)
                 .padding(horizontal = 16.dp, vertical = if (subtitle != null) 9.dp else 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -247,31 +400,52 @@ fun IosSheet(
     trailingText: String = "Done",
     content: @Composable ColumnScope.() -> Unit
 ) {
-    AnimatedVisibility(
-        visible,
-        enter = slideInVertically(tween(320)) { it } + fadeIn(),
-        exit = slideOutVertically(tween(260)) { it } + fadeOut()
-    ) {
+    AnimatedVisibility(visible, enter = fadeIn(tween(220)), exit = fadeOut(tween(220))) {
+        val drag = remember { Animatable(0f) }
+        val scope = rememberCoroutineScope()
+        val dismiss by rememberUpdatedState(onDismiss)
+        LaunchedEffect(Unit) { drag.snapTo(0f) }
         Box(Modifier.fillMaxSize().background(Ios.c.scrim)) {
             Column(
                 Modifier
                     .fillMaxSize()
+                    .animateEnterExit(
+                        enter = slideInVertically(spring(dampingRatio = 0.86f, stiffness = 340f, visibilityThreshold = IntOffset.VisibilityThreshold)) { it },
+                        exit = slideOutVertically(spring(dampingRatio = 1f, stiffness = 420f, visibilityThreshold = IntOffset.VisibilityThreshold)) { it }
+                    )
+                    .graphicsLayer { translationY = drag.value.coerceAtLeast(0f) }
                     .statusBarsPadding()
                     .padding(top = 10.dp)
-                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
                     .background(Ios.c.grouped)
             ) {
-                Box(Modifier.fillMaxWidth().padding(top = 6.dp), contentAlignment = Alignment.Center) {
-                    Box(Modifier.width(36.dp).height(5.dp).clip(CircleShape).background(Ios.c.tertiary))
-                }
-                Box(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 16.dp)) {
-                    Box(Modifier.align(Alignment.CenterStart)) { leading?.invoke() }
-                    Text(title, style = Ios.headline, color = Ios.c.label, modifier = Modifier.align(Alignment.Center), textAlign = TextAlign.Center)
-                    Box(
-                        Modifier.align(Alignment.CenterEnd).clip(CircleShape).background(Ios.c.fill)
-                            .clickable(onClick = onDismiss).padding(horizontal = 14.dp, vertical = 7.dp)
-                    ) {
-                        Text(trailingText, style = Ios.headline.copy(fontSize = 16.sp), color = Ios.c.label)
+                // grabber + nav bar: drag down to dismiss
+                Column(
+                    Modifier.fillMaxWidth().pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragEnd = {
+                                scope.launch {
+                                    if (drag.value > 180f) { dismiss() } else drag.animateTo(0f, Motion.bouncy)
+                                }
+                            },
+                            onDragCancel = { scope.launch { drag.animateTo(0f, Motion.bouncy) } }
+                        ) { ch, dy -> ch.consume(); scope.launch { drag.snapTo((drag.value + dy).coerceAtLeast(-20f)) } }
+                    }
+                ) {
+                    Box(Modifier.fillMaxWidth().padding(top = 6.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.width(36.dp).height(5.dp).clip(CircleShape).background(Ios.c.tertiary))
+                    }
+                    Box(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 16.dp)) {
+                        Box(Modifier.align(Alignment.CenterStart)) { leading?.invoke() }
+                        Text(title, style = Ios.headline, color = Ios.c.label, modifier = Modifier.align(Alignment.Center), textAlign = TextAlign.Center)
+                        Box(
+                            Modifier.align(Alignment.CenterEnd)
+                                .pressable(scaleTo = 0.88f) { dismiss() }
+                                .clip(CircleShape).background(Ios.c.fill)
+                                .padding(horizontal = 14.dp, vertical = 7.dp)
+                        ) {
+                            Text(trailingText, style = Ios.headline.copy(fontSize = 16.sp), color = Ios.c.label)
+                        }
                     }
                 }
                 content()
@@ -286,7 +460,7 @@ fun TextAction(text: String, color: Color = Ios.c.tint, bold: Boolean = false, o
         text,
         style = Ios.body.copy(fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal),
         color = color,
-        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(horizontal = 6.dp, vertical = 4.dp)
+        modifier = Modifier.clip(RoundedCornerShape(8.dp)).pressable(scaleTo = 0.9f, onClick = onClick).padding(horizontal = 6.dp, vertical = 4.dp)
     )
 }
 

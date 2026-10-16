@@ -164,8 +164,8 @@ private fun DownloadRow(d: DownloadItem) {
     }
     Box {
         Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(c.card)
-                .combinedClickable(onClick = { if (d.status == DlStatus.COMPLETED) open() }, onLongClick = { menu = true })
+            Modifier.fillMaxWidth().pressable(scaleTo = 0.97f, haptic = false, onLongClick = { menu = true }) { if (d.status == DlStatus.COMPLETED) open() }
+                .clip(RoundedCornerShape(20.dp)).background(c.card)
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -222,7 +222,7 @@ private fun DownloadRow(d: DownloadItem) {
 
 @Composable
 private fun RoundAction(icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
-    Box(Modifier.size(34.dp).clip(CircleShape).background(Ios.c.fill).clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(34.dp).pressable(scaleTo = 0.8f, onClick = onClick).clip(CircleShape).background(Ios.c.fill), contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = Ios.c.tint, modifier = Modifier.size(19.dp))
     }
 }
@@ -291,8 +291,8 @@ fun MediaSheet(visible: Boolean) {
                     Spacer(Modifier.height(10.dp))
                     Row {
                         Box(
-                            Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(19.dp)).background(c.tint)
-                                .clickable { Browser.downloadMedia(m, t) },
+                            Modifier.weight(1f).height(38.dp).pressable(scaleTo = 0.94f) { Browser.downloadMedia(m, t) }
+                                .clip(RoundedCornerShape(19.dp)).background(c.tint),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -301,7 +301,7 @@ fun MediaSheet(visible: Boolean) {
                             )
                         }
                         Spacer(Modifier.width(8.dp))
-                        Box(Modifier.size(38.dp).clip(CircleShape).background(c.fill).clickable { Browser.copy(m.url) }, contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(38.dp).pressable(scaleTo = 0.8f) { Browser.copy(m.url) }.clip(CircleShape).background(c.fill), contentAlignment = Alignment.Center) {
                             Icon(Icons.Outlined.ContentCopy, "Copy link", tint = c.tint, modifier = Modifier.size(18.dp))
                         }
                         Spacer(Modifier.width(8.dp))

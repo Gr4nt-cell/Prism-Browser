@@ -141,7 +141,7 @@ fun DownloadDialog(r: DownloadRequest) {
                     Column(Modifier.padding(horizontal = 14.dp).clip(RoundedCornerShape(18.dp)).background(c.card)) {
                         q.forEachIndexed { i, item ->
                             Row(
-                                Modifier.fillMaxWidth().clickable { selected = i }.padding(horizontal = 14.dp, vertical = 11.dp),
+                                Modifier.fillMaxWidth().tapHighlight { selected = i }.padding(horizontal = 14.dp, vertical = 11.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(item.label, style = Ios.subhead, color = c.label, modifier = Modifier.weight(1f))
@@ -167,13 +167,13 @@ fun DownloadDialog(r: DownloadRequest) {
 
             Box(Modifier.fillMaxWidth().height(0.5.dp).background(c.separator))
             Row(Modifier.fillMaxWidth().height(52.dp)) {
-                Box(Modifier.weight(1f).fillMaxSize().clickable { Browser.pendingDownload = null }, contentAlignment = Alignment.Center) {
+                Box(Modifier.weight(1f).fillMaxSize().tapHighlight { Browser.pendingDownload = null }, contentAlignment = Alignment.Center) {
                     Text("Cancel", style = Ios.body, color = c.tint)
                 }
                 Box(Modifier.width(0.5.dp).fillMaxSize().background(c.separator))
                 val canGo = r.kind == DlKind.FILE || (qualities != null)
                 Box(
-                    Modifier.weight(1f).fillMaxSize().clickable(enabled = canGo) {
+                    Modifier.weight(1f).fillMaxSize().tapHighlight(enabled = canGo) {
                         val q = qualities?.getOrNull(selected)
                         Browser.startDownload(r.copy(fileName = name.ifBlank { r.fileName }), q?.variant, q?.audio, threads)
                     },
@@ -243,11 +243,11 @@ fun ReaderOverlay(content: ReaderContent?) {
                 Modifier.statusBarsPadding().fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(Modifier.size(42.dp).glass(CircleShape).clickable { showOpts = !showOpts }, contentAlignment = Alignment.Center) {
+                Box(Modifier.size(42.dp).pressable(scaleTo = 0.85f) { showOpts = !showOpts }.glass(CircleShape), contentAlignment = Alignment.Center) {
                     Text("aA", style = Ios.headline, color = c.label)
                 }
                 Spacer(Modifier.weight(1f))
-                Box(Modifier.height(42.dp).glass(RoundedCornerShape(21.dp)).clickable { Browser.reader = null }.padding(horizontal = 18.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.height(42.dp).pressable(scaleTo = 0.88f) { Browser.reader = null }.glass(RoundedCornerShape(21.dp)).padding(horizontal = 18.dp), contentAlignment = Alignment.Center) {
                     Text("Done", style = Ios.headline, color = c.tint)
                 }
             }

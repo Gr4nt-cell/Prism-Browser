@@ -142,6 +142,7 @@ object Browser {
     }
 
     fun select(id: String) {
+        if (id != currentId) captureThumbnail(current)
         currentId = id
         current?.lastAccess = System.currentTimeMillis()
         toolbarCollapsed = false

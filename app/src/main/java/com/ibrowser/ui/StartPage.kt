@@ -96,12 +96,12 @@ private fun SectionPicker() {
         Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(40.dp).glass(RoundedCornerShape(20.dp), elevation = 4.dp).padding(3.dp)
     ) {
         val segW = maxWidth / SECTIONS.size
-        val x by animateDpAsState(segW * Browser.startSection, label = "seg")
+        val x by animateDpAsState(segW * Browser.startSection, androidx.compose.animation.core.spring(dampingRatio = 0.72f, stiffness = 420f), label = "seg")
         Box(Modifier.offset(x = x).width(segW).fillMaxSize().clip(RoundedCornerShape(17.dp)).background(if (c.dark) Color(0xFF3A3A3C) else Color.White))
         Row(Modifier.fillMaxSize()) {
             SECTIONS.forEachIndexed { i, (label, icon) ->
                 Row(
-                    Modifier.weight(1f).fillMaxSize().clip(RoundedCornerShape(17.dp)).clickable { Browser.startSection = i },
+                    Modifier.weight(1f).fillMaxSize().pressable(scaleTo = 0.9f) { Browser.startSection = i }.clip(RoundedCornerShape(17.dp)),
                     horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(icon, null, tint = if (Browser.startSection == i) c.tint else c.secondary, modifier = Modifier.size(17.dp))
@@ -145,8 +145,8 @@ private fun StartHome(tab: BrowserTab?) {
         if (s.showPrivacy) {
             SectionHeader("Privacy Report", Modifier.padding(top = 10.dp))
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp).clip(RoundedCornerShape(22.dp)).background(c.card)
-                    .clickable { Browser.showPrivacy = true }.padding(16.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp).pressable(scaleTo = 0.97f) { Browser.showPrivacy = true }
+                    .clip(RoundedCornerShape(22.dp)).background(c.card).padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Outlined.Shield, null, tint = c.label, modifier = Modifier.size(28.dp))
@@ -167,7 +167,7 @@ private fun StartHome(tab: BrowserTab?) {
             LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(Store.readingList.items.take(10), key = { it.url }) { site ->
                     Row(
-                        Modifier.width(260.dp).clip(RoundedCornerShape(18.dp)).background(c.card).clickable { Browser.load(site.url) }.padding(12.dp),
+                        Modifier.width(260.dp).pressable(scaleTo = 0.96f) { Browser.load(site.url) }.clip(RoundedCornerShape(18.dp)).background(c.card).padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         SiteTile(site.url, site.title, size = 44.dp, corner = 10.dp)
@@ -184,7 +184,7 @@ private fun StartHome(tab: BrowserTab?) {
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Text(
                 "Edit", style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = c.label,
-                modifier = Modifier.clip(CircleShape).background(c.fill).clickable { editing = !editing }.padding(horizontal = 22.dp, vertical = 9.dp)
+                modifier = Modifier.pressable(scaleTo = 0.9f) { editing = !editing }.clip(CircleShape).background(c.fill).padding(horizontal = 22.dp, vertical = 9.dp)
             )
         }
         if (editing) {
@@ -210,7 +210,7 @@ private fun TileGrid(sites: List<Site>, onRemove: (Site) -> Unit) {
                     Box(Modifier.weight(1f)) {
                         Column(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                                .combinedClickable(onClick = { Browser.load(site.url) }, onLongClick = { menu = true })
+                                .pressable(scaleTo = 0.88f, onLongClick = { menu = true }) { Browser.load(site.url) }
                                 .padding(vertical = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
@@ -243,7 +243,7 @@ fun SiteRow(site: Site, subtitle: String = hostOf(site.url), onDelete: () -> Uni
     var menu by remember { mutableStateOf(false) }
     Box {
         Row(
-            Modifier.fillMaxWidth().combinedClickable(onClick = { Browser.load(site.url); Browser.showLibrary = false }, onLongClick = { menu = true })
+            Modifier.fillMaxWidth().tapHighlight(onLongClick = { menu = true }) { Browser.load(site.url); Browser.showLibrary = false }
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -324,8 +324,8 @@ private fun ReadingListView() {
                 Text(
                     l, style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold),
                     color = if (unreadOnly == v) Color.White else c.label,
-                    modifier = Modifier.clip(CircleShape).background(if (unreadOnly == v) c.tint else c.fill)
-                        .clickable { unreadOnly = v }.padding(horizontal = 16.dp, vertical = 7.dp)
+                    modifier = Modifier.pressable(scaleTo = 0.9f) { unreadOnly = v }.clip(CircleShape).background(if (unreadOnly == v) c.tint else c.fill)
+                        .padding(horizontal = 16.dp, vertical = 7.dp)
                 )
             }
         }
@@ -363,7 +363,7 @@ private fun HistoryView() {
     Column(Modifier.fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { SearchField(q, "Search History") { q = it } }
-            Box(Modifier.padding(end = 12.dp).size(36.dp).clip(CircleShape).clickable { confirm = true }, contentAlignment = Alignment.Center) {
+            Box(Modifier.padding(end = 12.dp).size(36.dp).pressable(scaleTo = 0.8f) { confirm = true }, contentAlignment = Alignment.Center) {
                 Icon(Icons.Outlined.Delete, "Clear", tint = c.red, modifier = Modifier.size(20.dp))
             }
         }

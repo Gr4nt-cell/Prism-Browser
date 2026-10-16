@@ -4,6 +4,9 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
@@ -178,12 +181,16 @@ fun AddressPill(tab: BrowserTab, modifier: Modifier = Modifier, height: Int = 48
     val c = Ios.c
     var dragX by remember { mutableFloatStateOf(0f) }
     var dragY by remember { mutableFloatStateOf(0f) }
-    val shift by animateFloatAsState(dragX * 0.4f, spring(), label = "pillShift")
+    val shift by animateFloatAsState(dragX * 0.45f, Motion.bouncy, label = "pillShift")
+    val lift by animateFloatAsState(if (dragY < 0) (dragY * 0.25f).coerceAtLeast(-40f) else 0f, Motion.bouncy, label = "pillLift")
+    var pressed by remember { mutableStateOf(false) }
+    val glow by animateFloatAsState(if (pressed) 1f else 0f, Motion.smooth, label = "pillGlow")
     Box(
         modifier
             .height(height.dp)
-            .graphicsLayer { translationX = shift }
-            .glass(RoundedCornerShape((height / 2).dp))
+            .graphicsLayer { translationX = shift; translationY = lift }
+            .pressable(scaleTo = 0.97f, haptic = false, onPressedChange = { pressed = it }) { Browser.editing = true }
+            .glass(RoundedCornerShape((height / 2).dp), glow = glow)
             .pointerInput(tab.id) {
                 detectDragGestures(
                     onDragEnd = {
@@ -199,15 +206,11 @@ fun AddressPill(tab: BrowserTab, modifier: Modifier = Modifier, height: Int = 48
                     change.consume(); dragX += amount.x; dragY += amount.y
                 }
             }
-            .clickable(interactionSource = null, indication = null) { Browser.editing = true }
     ) {
         Row(Modifier.fillMaxSize().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             // Page menu
-            Box(
-                Modifier.size(40.dp).clip(CircleShape).clickable { Browser.showPageMenu = true },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.AutoMirrored.Outlined.Article, "Page menu", tint = c.label, modifier = Modifier.size(21.dp))
+            Box(contentAlignment = Alignment.Center) {
+                InlineIconButton(Icons.AutoMirrored.Outlined.Article, "Page menu", iconSize = 21.dp) { Browser.showPageMenu = true }
                 if (tab.blocked > 0 && Store.settings.adBlock) {
                     Box(Modifier.align(Alignment.TopEnd).padding(top = 7.dp, end = 6.dp).size(7.dp).clip(CircleShape).background(c.green))
                 }
@@ -230,7 +233,7 @@ fun AddressPill(tab: BrowserTab, modifier: Modifier = Modifier, height: Int = 48
             }
             if (tab.media.isNotEmpty()) {
                 Box(
-                    Modifier.size(34.dp).clip(CircleShape).clickable { Browser.showMedia = true },
+                    Modifier.size(34.dp).pressable(scaleTo = 0.8f) { Browser.showMedia = true },
                     contentAlignment = Alignment.Center
                 ) {
                     Box(Modifier.size(24.dp).clip(CircleShape).background(c.tint), contentAlignment = Alignment.Center) {
@@ -239,18 +242,17 @@ fun AddressPill(tab: BrowserTab, modifier: Modifier = Modifier, height: Int = 48
                 }
             }
             if (!tab.isStartPage) {
-                Box(
-                    Modifier.size(40.dp).clip(CircleShape).clickable { if (tab.loading) Browser.stop() else Browser.reload() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(if (tab.loading) Icons.Outlined.Close else Icons.Outlined.Refresh, "Reload", tint = c.label, modifier = Modifier.size(20.dp))
+                InlineIconButton(if (tab.loading) Icons.Outlined.Close else Icons.Outlined.Refresh, "Reload") {
+                    if (tab.loading) Browser.stop() else Browser.reload()
                 }
             } else Spacer(Modifier.width(40.dp))
         }
-        if (tab.loading && tab.progress in 1..99) {
+        val prog by animateFloatAsState(if (tab.loading) tab.progress / 100f else 1f, Motion.smooth, label = "progress")
+        val progAlpha by animateFloatAsState(if (tab.loading && tab.progress in 1..99) 1f else 0f, tween(350), label = "progressAlpha")
+        if (progAlpha > 0f) {
             Box(
-                Modifier.align(Alignment.BottomStart).fillMaxWidth(tab.progress / 100f).height(2.5.dp)
-                    .padding(horizontal = 0.dp).background(c.tint)
+                Modifier.align(Alignment.BottomStart).fillMaxWidth(prog.coerceIn(0f, 1f)).height(2.5.dp)
+                    .graphicsLayer { alpha = progAlpha }.background(c.tint)
             )
         }
     }
@@ -262,8 +264,8 @@ private fun CollapsedPill(tab: BrowserTab) {
     Row(
         Modifier
             .height(30.dp)
-            .glass(RoundedCornerShape(15.dp), elevation = 8.dp)
-            .clickable { Browser.toolbarCollapsed = false; Browser.toolbarHidden = false }
+            .pressable(scaleTo = 0.92f) { Browser.toolbarCollapsed = false; Browser.toolbarHidden = false }
+            .glass(RoundedCornerShape(15.dp), elevation = 10.dp)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -281,7 +283,12 @@ private fun CompactToolbar(tab: BrowserTab) {
     val collapsed = (Browser.toolbarCollapsed || Browser.toolbarHidden) && !tab.isStartPage
     AnimatedContent(
         collapsed,
-        transitionSpec = { (fadeIn() + scaleIn(initialScale = 0.9f)) togetherWith (fadeOut() + scaleOut(targetScale = 0.9f)) },
+        transitionSpec = {
+            (fadeIn(tween(180, delayMillis = 60)) + scaleIn(Motion.bouncy, initialScale = if (targetState) 1.6f else 0.55f)) togetherWith
+                (fadeOut(tween(120)) + scaleOut(Motion.smooth, targetScale = if (targetState) 0.55f else 1.6f)) using
+                SizeTransform(clip = false) { _, _ -> spring(dampingRatio = 0.8f, stiffness = 380f) }
+        },
+        contentAlignment = Alignment.BottomCenter,
         label = "compact"
     ) { col ->
         if (col) {
@@ -322,7 +329,16 @@ private fun TabsButton(size: Int = 48) {
 @Composable
 private fun BottomToolbar(tab: BrowserTab) {
     val collapsed = (Browser.toolbarCollapsed || Browser.toolbarHidden) && !tab.isStartPage
-    AnimatedContent(collapsed, label = "bottom") { col ->
+    AnimatedContent(
+        collapsed,
+        transitionSpec = {
+            (fadeIn(tween(180, delayMillis = 60)) + scaleIn(Motion.bouncy, initialScale = 0.8f)) togetherWith
+                (fadeOut(tween(120)) + scaleOut(Motion.smooth, targetScale = 0.8f)) using
+                SizeTransform(clip = false) { _, _ -> spring(dampingRatio = 0.8f, stiffness = 380f) }
+        },
+        contentAlignment = Alignment.BottomCenter,
+        label = "bottom"
+    ) { col ->
         if (col) {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CollapsedPill(tab) }
         } else {
@@ -378,11 +394,15 @@ private fun TopLayoutBottomBar(tab: BrowserTab) {
 
 @Composable
 private fun TabButtonMenu(visible: Boolean) {
-    AnimatedVisibility(visible, enter = fadeIn(), exit = fadeOut()) {
+    AnimatedVisibility(visible, enter = fadeIn(tween(160)), exit = fadeOut(tween(200))) {
         Box(Modifier.fillMaxSize().background(Ios.c.scrim).clickable(interactionSource = null, indication = null) { Browser.showTabMenu = false }) {
             Column(
                 Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 12.dp, bottom = 70.dp).width(250.dp)
-                    .glass(RoundedCornerShape(22.dp), strong = true).padding(vertical = 6.dp)
+                    .animateEnterExit(
+                        enter = scaleIn(Motion.bouncy, initialScale = 0.4f, transformOrigin = TransformOrigin(0.92f, 1f)) + fadeIn(tween(120)),
+                        exit = scaleOut(Motion.smooth, targetScale = 0.5f, transformOrigin = TransformOrigin(0.92f, 1f)) + fadeOut(tween(120))
+                    )
+                    .glass(RoundedCornerShape(24.dp), strong = true).padding(vertical = 6.dp)
             ) {
                 MenuItem(Icons.Outlined.Add, "New Tab") { Browser.showTabMenu = false; Browser.newTab(private = false); Browser.editing = true }
                 MenuItem(Icons.Outlined.VisibilityOff, "New Private Tab") { Browser.showTabMenu = false; Browser.newTab(private = true); Browser.editing = true }
@@ -423,12 +443,8 @@ private fun FindBar() {
             }
         )
         if (q.isNotEmpty()) Text(if (Browser.findCount == 0) "No matches" else "${Browser.findIndex} of ${Browser.findCount}", style = Ios.footnote, color = c.secondary)
-        Box(Modifier.size(36.dp).clip(CircleShape).clickable { Browser.findNext(false) }, contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.KeyboardArrowUp, "Previous", tint = c.tint)
-        }
-        Box(Modifier.size(36.dp).clip(CircleShape).clickable { Browser.findNext(true) }, contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.KeyboardArrowDown, "Next", tint = c.tint)
-        }
+        InlineIconButton(Icons.Outlined.KeyboardArrowUp, "Previous", size = 36.dp, iconSize = 24.dp, tint = c.tint) { Browser.findNext(false) }
+        InlineIconButton(Icons.Outlined.KeyboardArrowDown, "Next", size = 36.dp, iconSize = 24.dp, tint = c.tint) { Browser.findNext(true) }
         TextAction("Done", bold = true) { Browser.closeFind() }
     }
 }
@@ -466,7 +482,7 @@ fun MenuItem(
 ) {
     val c = Ios.c
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 11.dp),
+        Modifier.fillMaxWidth().tapHighlight(onClick = onClick).padding(horizontal = 18.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text, style = Ios.body, color = if (destructive) c.red else c.label, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)

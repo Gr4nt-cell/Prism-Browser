@@ -70,6 +70,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -120,23 +123,46 @@ fun BrowserApp() {
         }
 
         // ---- Toolbars ----
+        // ---- Adaptive glass: sample the page colour next to each bar ----
+        var bottomBounds by remember { mutableStateOf<Rect?>(null) }
+        var topBounds by remember { mutableStateOf<Rect?>(null) }
+        val sampling = tab != null && !tab.isStartPage && !Browser.editing && !Browser.showTabs && Browser.customView == null &&
+            Browser.reader == null && !Browser.showPageMenu && !Browser.showTabMenu && Browser.contextTarget == null &&
+            !Browser.showDownloads && !Browser.showSettings && !Browser.showMedia && !Browser.showLibrary &&
+            !Browser.showPrivacy && !Browser.showSiteSettings && Browser.pendingDownload == null
+        val bottomBackdrop by rememberBackdropColor({ bottomBounds }, SampleSide.ABOVE, sampling)
+        val topBackdrop by rememberBackdropColor({ topBounds }, SampleSide.BELOW, sampling && layout == ToolbarLayout.TOP)
+
         if (tab != null && !Browser.findMode) {
             when (layout) {
-                ToolbarLayout.COMPACT -> Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 6.dp)) {
-                    CompactToolbar(tab)
+                ToolbarLayout.COMPACT -> Box(
+                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 6.dp)
+                        .onGloballyPositioned { bottomBounds = it.boundsInWindow() }
+                ) {
+                    AdaptiveGlass(bottomBackdrop) { CompactToolbar(tab) }
                 }
-                ToolbarLayout.BOTTOM -> Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 6.dp)) {
-                    BottomToolbar(tab)
+                ToolbarLayout.BOTTOM -> Box(
+                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 6.dp)
+                        .onGloballyPositioned { bottomBounds = it.boundsInWindow() }
+                ) {
+                    AdaptiveGlass(bottomBackdrop) { BottomToolbar(tab) }
                 }
                 ToolbarLayout.TOP -> {
-                    Box(Modifier.align(Alignment.TopCenter).statusBarsPadding()) { TopAddressBar(tab) }
-                    Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding()) { TopLayoutBottomBar(tab) }
+                    Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().onGloballyPositioned { topBounds = it.boundsInWindow() }) {
+                        AdaptiveGlass(topBackdrop) { TopAddressBar(tab) }
+                    }
+                    Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().onGloballyPositioned { bottomBounds = it.boundsInWindow() }) {
+                        AdaptiveGlass(bottomBackdrop) { TopLayoutBottomBar(tab) }
+                    }
                 }
             }
         }
 
         if (Browser.findMode) {
-            Box(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().imePadding().padding(bottom = 6.dp)) { FindBar() }
+            Box(
+                Modifier.align(Alignment.BottomCenter).navigationBarsPadding().imePadding().padding(bottom = 6.dp)
+                    .onGloballyPositioned { bottomBounds = it.boundsInWindow() }
+            ) { AdaptiveGlass(bottomBackdrop) { FindBar() } }
         }
 
         // ---- Overlays ----

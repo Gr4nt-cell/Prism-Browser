@@ -97,6 +97,8 @@ object Browser {
     var customView by mutableStateOf<View?>(null)
     private var customCallback: WebChromeClient.CustomViewCallback? = null
     var toolbarCollapsed by mutableStateOf(false)
+    /** Last time the page scrolled; the glass samples its backdrop faster while scrolling. */
+    @Volatile var lastScrollAt = 0L
     var toolbarHidden by mutableStateOf(false)
     var fileCallback: ValueCallback<Array<Uri>>? = null
     var fileChooserParams: WebChromeClient.FileChooserParams? = null
@@ -334,6 +336,7 @@ object Browser {
 
         wv.setOnScrollChangeListener { _, _, y, _, oldY ->
             if (t.id != currentId) return@setOnScrollChangeListener
+            lastScrollAt = System.currentTimeMillis()
             val dy = y - oldY
             if (y <= 4) toolbarCollapsed = false
             else if (dy > 12) toolbarCollapsed = true

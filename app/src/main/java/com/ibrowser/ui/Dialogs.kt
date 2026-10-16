@@ -7,6 +7,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
+import androidx.compose.material.icons.rounded.Videocam
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background

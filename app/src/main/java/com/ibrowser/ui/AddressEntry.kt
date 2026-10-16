@@ -107,7 +107,7 @@ fun AddressEntry(visible: Boolean) {
         }
         val topHit = local.firstOrNull { hostOf(it.url).startsWith(q.lowercase().removePrefix("www.")) }
 
-        Box(Modifier.fillMaxSize().background(c.grouped)) {
+        Box(Modifier.fillMaxSize().wallpaper()) {
             Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
                 LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 12.dp)) {
                     if (q.isEmpty()) {

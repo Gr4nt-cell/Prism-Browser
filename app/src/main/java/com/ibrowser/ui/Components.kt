@@ -79,6 +79,44 @@ import androidx.compose.ui.unit.sp
 import com.ibrowser.data.hostOf
 import kotlin.math.abs
 
+/**
+ * The app wallpaper: the soft lavender gradient (pink-lilac at the top, misty blue at the
+ * bottom) with two large blurred hazes, so the glass on top always has colour to refract.
+ */
+@Composable
+fun Modifier.wallpaper(): Modifier {
+    val c = Ios.c
+    return this.drawBehind {
+        drawRect(Brush.verticalGradient(0f to c.wallTop, 0.52f to c.wallMid, 1f to c.wallBottom))
+        drawRect(
+            Brush.radialGradient(
+                listOf(c.wallGlowA.copy(alpha = 0.85f), c.wallGlowA.copy(alpha = 0f)),
+                center = androidx.compose.ui.geometry.Offset(size.width * 0.05f, size.height * 0.28f),
+                radius = size.maxDimension * 0.55f
+            )
+        )
+        drawRect(
+            Brush.radialGradient(
+                listOf(c.wallGlowB.copy(alpha = 0.75f), c.wallGlowB.copy(alpha = 0f)),
+                center = androidx.compose.ui.geometry.Offset(size.width * 1.0f, size.height * 0.72f),
+                radius = size.maxDimension * 0.5f
+            )
+        )
+    }
+}
+
+/** Frosted card that sits on the wallpaper: translucent fill + bright hairline, no heavy shadow. */
+@Composable
+fun Modifier.glassCard(shape: Shape): Modifier {
+    val c = Ios.c
+    return this
+        .shadow(6.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.25f else 0.05f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.35f else 0.08f))
+        .clip(shape)
+        .background(c.card)
+        .background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (c.dark) 0.05f else 0.35f), 0.4f to Color.White.copy(alpha = 0f)))
+        .border(0.8.dp, Brush.verticalGradient(0f to Color.White.copy(alpha = if (c.dark) 0.22f else 0.95f), 1f to Color.White.copy(alpha = if (c.dark) 0.06f else 0.35f)), shape)
+}
+
 /** Shared spring specs so motion feels consistent everywhere. */
 object Motion {
     val press = spring<Float>(dampingRatio = 0.5f, stiffness = 700f)
@@ -329,7 +367,7 @@ fun IosGroup(header: String? = null, footer: String? = null, content: @Composabl
         if (header != null) {
             Text(header.uppercase(), style = Ios.footnote, color = Ios.c.secondary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp, top = 22.dp))
         } else Spacer(Modifier.height(22.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(Ios.c.card), content = content)
+        Column(Modifier.fillMaxWidth().glassCard(RoundedCornerShape(26.dp)), content = content)
         if (footer != null) {
             Text(footer, style = Ios.footnote, color = Ios.c.secondary, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp))
         }
@@ -418,7 +456,7 @@ fun IosSheet(
                     .statusBarsPadding()
                     .padding(top = 10.dp)
                     .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
-                    .background(Ios.c.grouped)
+                    .wallpaper()
             ) {
                 // grabber + nav bar: drag down to dismiss
                 Column(

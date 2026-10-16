@@ -22,6 +22,11 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.CoroutineStart
 import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Dispatcher
+import java.net.InetAddress
+import java.net.Socket
+import javax.net.SocketFactory
 import okhttp3.Request
 import org.json.JSONArray
 import java.io.File
@@ -35,15 +40,40 @@ object DownloadManager {
     private val jobs = ConcurrentHashMap<String, Job>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /**
+     * Download client tuned for throughput:
+     * - HTTP/1.1 only, so every range/segment gets its OWN TCP connection. Over HTTP/2 OkHttp
+     *   multiplexes all ranges onto one socket, which caps a "16-connection" download at the
+     *   speed of a single connection.
+     * - Big socket receive buffers (2 MB) and TCP_NODELAY for fast window ramp-up.
+     * - A large connection pool so retries and work-stealing splits reuse warm connections.
+     */
     val http: OkHttpClient by lazy {
         OkHttpClient.Builder()
-            .connectionPool(ConnectionPool(32, 5, TimeUnit.MINUTES))
-            .connectTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(40, TimeUnit.SECONDS)
+            .protocols(listOf(Protocol.HTTP_1_1))
+            .socketFactory(FastSocketFactory)
+            .connectionPool(ConnectionPool(96, 5, TimeUnit.MINUTES))
+            .dispatcher(Dispatcher().apply { maxRequests = 128; maxRequestsPerHost = 64 })
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
             .followRedirects(true)
             .followSslRedirects(true)
             .retryOnConnectionFailure(true)
             .build()
+    }
+
+    private object FastSocketFactory : SocketFactory() {
+        private val base = SocketFactory.getDefault()
+        private fun tune(s: Socket): Socket = s.apply {
+            runCatching { receiveBufferSize = 2 * 1024 * 1024 }
+            runCatching { tcpNoDelay = true }
+            runCatching { keepAlive = true }
+        }
+        override fun createSocket(): Socket = tune(base.createSocket())
+        override fun createSocket(host: String?, port: Int): Socket = tune(base.createSocket(host, port))
+        override fun createSocket(host: String?, port: Int, localHost: InetAddress?, localPort: Int): Socket = tune(base.createSocket(host, port, localHost, localPort))
+        override fun createSocket(host: InetAddress?, port: Int): Socket = tune(base.createSocket(host, port))
+        override fun createSocket(address: InetAddress?, port: Int, localAddress: InetAddress?, localPort: Int): Socket = tune(base.createSocket(address, port, localAddress, localPort))
     }
 
     fun init(ctx: Context) {
@@ -89,8 +119,22 @@ object DownloadManager {
         }
     }
 
-    /** Public Downloads/iBrowser when writable, otherwise the app's own downloads folder. */
+    /** Convert a folder picked with the system picker into a real path (internal storage only). */
+    fun pathFromTree(uri: android.net.Uri): String? = runCatching {
+        val docId = android.provider.DocumentsContract.getTreeDocumentId(uri)   // e.g. "primary:Movies/Clips"
+        if (!docId.startsWith("primary:")) return null
+        File(Environment.getExternalStorageDirectory(), docId.removePrefix("primary:")).absolutePath
+    }.getOrNull()
+
+    private fun writable(dir: File): Boolean = runCatching {
+        dir.mkdirs()
+        val probe = File(dir, ".probe")
+        probe.writeText("x"); probe.delete(); true
+    }.getOrDefault(false)
+
+    /** The folder chosen in Settings, else public Downloads/iBrowser, else the app's own downloads folder. */
     fun downloadDir(): File {
+        Store.settings.downloadDir.takeIf { it.isNotBlank() }?.let { File(it) }?.let { if (writable(it)) return it }
         val pub = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "iBrowser")
         runCatching {
             pub.mkdirs()

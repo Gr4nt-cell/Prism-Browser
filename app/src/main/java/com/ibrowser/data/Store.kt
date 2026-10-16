@@ -50,7 +50,11 @@ class Settings(private val p: SharedPreferences) {
     var javascript by mutableStateOf(p.getBoolean("javascript", true))
     var desktopDefault by mutableStateOf(p.getBoolean("desktop", false))
     var sniffMedia by mutableStateOf(p.getBoolean("sniff", true))
-    var threads by mutableStateOf(p.getInt("threads", 8))
+    // 16 connections by default; users still on the old default of 8 are moved up once
+    var threads by mutableStateOf(
+        if (!p.getBoolean("threadsMigrated", false) && p.getInt("threads", 8) == 8) 16 else p.getInt("threads", 16)
+    )
+    var downloadDir by mutableStateOf(p.getString("downloadDir", "") ?: "")
     var maxParallel by mutableStateOf(p.getInt("maxParallel", 3))
     var askBeforeDownload by mutableStateOf(p.getBoolean("askDl", true))
     var darkWeb by mutableStateOf(p.getBoolean("darkWeb", false))
@@ -75,6 +79,8 @@ class Settings(private val p: SharedPreferences) {
             .putBoolean("desktop", desktopDefault)
             .putBoolean("sniff", sniffMedia)
             .putInt("threads", threads)
+            .putBoolean("threadsMigrated", true)
+            .putString("downloadDir", downloadDir)
             .putInt("maxParallel", maxParallel)
             .putBoolean("askDl", askBeforeDownload)
             .putBoolean("darkWeb", darkWeb)

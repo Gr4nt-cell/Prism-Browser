@@ -12,6 +12,7 @@ class App : Application() {
         super.onCreate()
         Store.init(this)
         Browser.init(this)
+        com.ibrowser.browser.SitePermissions.init(this)
         DownloadManager.init(this)
         com.ibrowser.player.Media.init(this)
         Thread {

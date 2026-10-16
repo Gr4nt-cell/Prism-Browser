@@ -108,10 +108,10 @@ fun BrowserApp() {
         ToolbarLayout.TOP -> navBottom + if (Browser.toolbarCollapsed || Browser.toolbarHidden) 0.dp else 56.dp
     }
 
-    Box(Modifier.fillMaxSize().background(c.background)) {
+    Box(Modifier.fillMaxSize().wallpaper()) {
         // status-bar tint (uses the site's theme-color like Safari)
         val statusColor = tab?.themeColor?.let { Color(it) } ?: c.background
-        Box(Modifier.fillMaxWidth().height(statusTop).background(if (tab?.isStartPage == true) c.grouped else statusColor))
+        if (tab?.isStartPage != true) Box(Modifier.fillMaxWidth().height(statusTop).background(statusColor))
 
         if (tab != null) {
             Box(Modifier.fillMaxSize().padding(top = statusTop + topBarH, bottom = bottomInset)) {
@@ -190,6 +190,7 @@ fun BrowserApp() {
             MiniPlayer(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = liftAnim))
         }
         Browser.pendingDownload?.let { DownloadDialog(it) }
+        PermissionPromptOverlay(com.ibrowser.browser.SitePermissions.prompt)
         FullscreenOverlay()
         MediaPlayerOverlay()
     }

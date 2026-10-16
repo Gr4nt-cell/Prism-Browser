@@ -180,7 +180,7 @@ private fun DownloadRow(d: DownloadItem) {
     Box {
         Row(
             Modifier.fillMaxWidth().pressable(scaleTo = 0.97f, haptic = false, onLongClick = { menu = true }) { if (d.status == DlStatus.COMPLETED) open() }
-                .clip(RoundedCornerShape(20.dp)).background(c.card)
+                .glassCard(RoundedCornerShape(20.dp))
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -283,7 +283,7 @@ fun MediaSheet(visible: Boolean) {
         }
         LazyColumn(contentPadding = PaddingValues(16.dp)) {
             items(media, key = { it.url }) { m ->
-                Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).clip(RoundedCornerShape(20.dp)).background(c.card).padding(14.dp)) {
+                Column(Modifier.fillMaxWidth().padding(bottom = 10.dp).glassCard(RoundedCornerShape(20.dp)).padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         val (label, col) = when (m.kind) {
                             MediaKind.HLS -> "HLS" to c.orange
@@ -399,7 +399,29 @@ fun SettingsSheet(visible: Boolean) {
                     }
                 }
             }
-            IosGroup("Downloads", footer = "More connections download large files faster when the server allows it. Streams (HLS/DASH) download segments in parallel and are converted to MP4.") {
+            val act = ctx as? com.ibrowser.MainActivity
+            var fileAccess by remember(visible) { mutableStateOf(act?.hasAllFilesAccess() == true) }
+            fun hasPerm(p: String) = androidx.core.content.ContextCompat.checkSelfPermission(ctx, p) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            IosGroup("Device Access", footer = "Websites always ask before using your camera, microphone or location. Full file access lets iBrowser save downloads to any folder and open any file on your phone.") {
+                IosRow("Files & Storage", value = if (fileAccess) "All Files" else "Downloads Only", showChevron = true) {
+                    act?.requestAllFilesAccess(); fileAccess = act?.hasAllFilesAccess() == true
+                }
+                IosRow("Camera", value = if (hasPerm(android.Manifest.permission.CAMERA)) "Allowed" else "Ask", showChevron = true) {
+                    com.ibrowser.browser.SitePermissions.requestRuntime?.invoke(arrayOf(android.Manifest.permission.CAMERA)) { }
+                }
+                IosRow("Microphone", value = if (hasPerm(android.Manifest.permission.RECORD_AUDIO)) "Allowed" else "Ask", showChevron = true) {
+                    com.ibrowser.browser.SitePermissions.requestRuntime?.invoke(arrayOf(android.Manifest.permission.RECORD_AUDIO)) { }
+                }
+                IosRow("Open File…", divider = false, showChevron = true) { Browser.showSettings = false; act?.openFilePicker() }
+            }
+            WebsitePermissionsGroup()
+            IosGroup("Downloads", footer = "More connections download large files faster when the server allows it — each connection is a separate TCP stream. Streams (HLS/DASH) download segments in parallel and are converted to MP4.") {
+                IosRow(
+                    "Save Downloads To",
+                    value = s.downloadDir.ifBlank { "Download/iBrowser" }.removePrefix("/storage/emulated/0/"),
+                    showChevron = true
+                ) { act?.openFolderPicker() }
+                if (s.downloadDir.isNotBlank()) IosRow("Reset to Download/iBrowser", titleColor = c.tint) { s.downloadDir = ""; s.save() }
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                     Row { Text("Connections per download", style = Ios.body, color = c.label, modifier = Modifier.weight(1f)); Text("${s.threads}", style = Ios.body, color = c.secondary) }
                     Slider(
@@ -451,7 +473,7 @@ fun PrivacySheet(visible: Boolean) {
     val s = Store.settings
     IosSheet(visible, "Privacy Report", { Browser.showPrivacy = false }) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.card).padding(20.dp)) {
+            Column(Modifier.fillMaxWidth().glassCard(RoundedCornerShape(24.dp)).padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.Shield, null, tint = c.green, modifier = Modifier.size(40.dp))
                     Spacer(Modifier.width(14.dp))
@@ -464,7 +486,7 @@ fun PrivacySheet(visible: Boolean) {
             Spacer(Modifier.height(12.dp))
             val t = Browser.current
             if (t != null && !t.isStartPage) {
-                Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(c.card).padding(20.dp)) {
+                Column(Modifier.fillMaxWidth().glassCard(RoundedCornerShape(24.dp)).padding(20.dp)) {
                     Text("This page", style = Ios.footnote, color = c.secondary)
                     Text(t.host, style = Ios.headline, color = c.label)
                     Spacer(Modifier.height(6.dp))
@@ -518,3 +540,28 @@ fun LibrarySheet(visible: Boolean) {
 
 @Suppress("unused")
 private val keepImports = listOf(Icons.Outlined.Delete)
+
+
+@Composable
+private fun WebsitePermissionsGroup() {
+    val c = Ios.c
+    var version by remember { mutableStateOf(0) }
+    val all = remember(version) { com.ibrowser.browser.SitePermissions.all() }
+    if (all.isEmpty()) return
+    IosGroup("Websites", footer = "Tap a site to reset its permissions — it will ask again next time.") {
+        all.entries.forEachIndexed { i, (host, perms) ->
+            IosRow(
+                host,
+                subtitle = perms.entries.joinToString(" · ") { (a, d) ->
+                    a.label.replaceFirstChar { it.uppercase() } + ": " + when (d) {
+                        com.ibrowser.browser.SitePermissions.Decision.ALLOW -> "Allow"
+                        com.ibrowser.browser.SitePermissions.Decision.DENY -> "Deny"
+                        else -> "Ask"
+                    }
+                },
+                divider = i < all.size - 1,
+                trailing = { Text("Reset", style = Ios.subhead, color = c.tint) }
+            ) { com.ibrowser.browser.SitePermissions.clear(host); version++ }
+        }
+    }
+}

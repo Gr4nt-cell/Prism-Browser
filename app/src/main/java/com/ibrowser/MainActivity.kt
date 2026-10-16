@@ -18,6 +18,9 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.ibrowser.browser.Browser
+import android.os.Environment
+import android.provider.MediaStore
+import android.provider.Settings
 import com.ibrowser.player.Media
 import android.app.PictureInPictureParams
 import android.content.pm.ActivityInfo
@@ -30,10 +33,98 @@ import com.ibrowser.ui.IBrowserTheme
 
 class MainActivity : ComponentActivity() {
 
+    private var captureUri: Uri? = null
     private val fileChooser = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
         val cb = Browser.fileCallback
         Browser.fileCallback = null
-        cb?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(res.resultCode, res.data))
+        var result = WebChromeClient.FileChooserParams.parseResult(res.resultCode, res.data)
+        // a photo/video taken with the camera arrives in our capture file, not in the result intent
+        if (res.resultCode == RESULT_OK && (result == null || result.isEmpty()) && captureUri != null) result = arrayOf(captureUri!!)
+        captureUri = null
+        cb?.onReceiveValue(result)
+    }
+
+    // runtime permissions (camera, microphone, location) requested on behalf of web pages
+    private var runtimeCallback: ((Boolean) -> Unit)? = null
+    private val runtimePermissions = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { res ->
+        val cb = runtimeCallback; runtimeCallback = null
+        cb?.invoke(res.values.any { it })
+    }
+
+    // "Open File…" from the page menu
+    private val openFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        val name = displayName(uri)
+        Browser.openLocalFile(uri, name, contentResolver.getType(uri))
+    }
+
+    // download folder picker
+    private val pickFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        val path = com.ibrowser.download.DownloadManager.pathFromTree(uri)
+        if (path == null) {
+            Browser.toast("Choose a folder on the phone's internal storage")
+        } else {
+            com.ibrowser.data.Store.settings.downloadDir = path
+            com.ibrowser.data.Store.settings.save()
+            if (!hasAllFilesAccess()) requestAllFilesAccess()
+            Browser.toast("Downloads will be saved to ${path.removePrefix("/storage/emulated/0/")}")
+        }
+    }
+
+    fun displayName(uri: Uri): String = runCatching {
+        contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+            if (c.moveToFirst()) c.getString(0) else null
+        }
+    }.getOrNull() ?: uri.lastPathSegment ?: "File"
+
+    fun openFilePicker() = runCatching { openFile.launch(arrayOf("*/*")) }
+    fun openFolderPicker() = runCatching { pickFolder.launch(null) }
+
+    fun hasAllFilesAccess(): Boolean =
+        if (Build.VERSION.SDK_INT >= 30) Environment.isExternalStorageManager()
+        else ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+
+    /** Opens Android's "Allow access to manage all files" screen for iBrowser. */
+    fun requestAllFilesAccess() {
+        if (Build.VERSION.SDK_INT >= 30) {
+            runCatching {
+                startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:$packageName")))
+            }.onFailure { runCatching { startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)) } }
+        } else {
+            runtimeCallback = null
+            runtimePermissions.launch(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE))
+        }
+    }
+
+    /** Build an upload picker that also offers the camera / sound recorder, like Safari's "Take Photo or Video". */
+    private fun buildChooser(params: WebChromeClient.FileChooserParams?): Intent {
+        val accept = params?.acceptTypes?.filter { it.isNotBlank() }?.joinToString(",")?.lowercase() ?: ""
+        val wantsImage = accept.isEmpty() || accept.contains("image") || accept.contains("*/*")
+        val wantsVideo = accept.isEmpty() || accept.contains("video") || accept.contains("*/*")
+        val wantsAudio = accept.contains("audio")
+        val pick = params?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE)
+        if (params?.mode == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE) pick.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        val extras = ArrayList<Intent>()
+        val canCamera = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        if (canCamera && (wantsImage || wantsVideo)) {
+            val dir = java.io.File(cacheDir, "capture").apply { mkdirs() }
+            if (wantsImage) {
+                val f = java.io.File(dir, "photo_${System.currentTimeMillis()}.jpg")
+                val u = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.files", f)
+                captureUri = u
+                extras.add(Intent(MediaStore.ACTION_IMAGE_CAPTURE).putExtra(MediaStore.EXTRA_OUTPUT, u)
+                    .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION))
+            }
+            if (wantsVideo) extras.add(Intent(MediaStore.ACTION_VIDEO_CAPTURE))
+        }
+        if (wantsAudio) extras.add(Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION))
+        // capture="camera" on the <input>: go straight to the camera
+        if (params?.isCaptureEnabled == true && extras.isNotEmpty()) return extras.first()
+        return Intent.createChooser(pick, "Choose File").apply {
+            if (extras.isNotEmpty()) putExtra(Intent.EXTRA_INITIAL_INTENTS, extras.toTypedArray())
+        }
     }
 
     private val notifPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -45,12 +136,23 @@ class MainActivity : ComponentActivity() {
         Browser.attach(this)
         Browser.restore()
         Browser.requestFileChooser = {
-            val params = Browser.fileChooserParams
-            val intent = params?.createIntent() ?: Intent(Intent.ACTION_GET_CONTENT).setType("*/*").addCategory(Intent.CATEGORY_OPENABLE)
-            if (params?.mode == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE) intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-            runCatching { fileChooser.launch(intent) }.onFailure {
-                Browser.fileCallback?.onReceiveValue(null); Browser.fileCallback = null
+            val launch = {
+                runCatching { fileChooser.launch(buildChooser(Browser.fileChooserParams)) }.onFailure {
+                    Browser.fileCallback?.onReceiveValue(null); Browser.fileCallback = null
+                }
             }
+            // ask for the camera first so the picker can offer "Take Photo"
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED &&
+                Browser.fileChooserParams?.acceptTypes?.any { it.isBlank() || it.contains("image") || it.contains("video") } != false
+            ) {
+                runtimeCallback = { launch() }
+                runtimePermissions.launch(arrayOf(Manifest.permission.CAMERA))
+            } else launch()
+        }
+        com.ibrowser.browser.SitePermissions.requestRuntime = { perms, cb ->
+            val missing = perms.filter { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
+            if (missing.isEmpty()) cb(true)
+            else { runtimeCallback = cb; runtimePermissions.launch(missing.toTypedArray()) }
         }
         handleIntent(intent)
 

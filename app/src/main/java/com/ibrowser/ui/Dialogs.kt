@@ -6,6 +6,7 @@ import android.webkit.WebViewClient
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -138,7 +139,7 @@ fun DownloadDialog(r: DownloadRequest) {
                         CircularProgressIndicator(Modifier.size(24.dp), color = c.tint, strokeWidth = 2.5.dp)
                     }
                 } else {
-                    Column(Modifier.padding(horizontal = 14.dp).clip(RoundedCornerShape(18.dp)).background(c.card)) {
+                    Column(Modifier.padding(horizontal = 14.dp).glassCard(RoundedCornerShape(18.dp))) {
                         q.forEachIndexed { i, item ->
                             Row(
                                 Modifier.fillMaxWidth().tapHighlight { selected = i }.padding(horizontal = 14.dp, vertical = 11.dp),
@@ -283,6 +284,54 @@ fun ReaderOverlay(content: ReaderContent?) {
                                 contentAlignment = Alignment.Center
                             ) { Text(l, style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = if (serif == v) Color.White else c.label) }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ============================================================ Site permission prompt (camera / mic / location)
+
+@Composable
+fun PermissionPromptOverlay(prompt: com.ibrowser.browser.PermissionPrompt?) {
+    AnimatedVisibility(prompt != null, enter = fadeIn(tween(160)), exit = fadeOut(tween(180))) {
+        val p = prompt ?: return@AnimatedVisibility
+        val c = Ios.c
+        val host = remember(p) { runCatching { android.net.Uri.parse(p.origin).host?.removePrefix("www.") }.getOrNull() ?: p.origin }
+        val what = p.access.joinToString(" and ") { it.label }
+        Box(
+            Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.32f)).clickable(interactionSource = null, indication = null) { },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                Modifier.padding(36.dp).fillMaxWidth()
+                    .animateEnterExit(enter = androidx.compose.animation.scaleIn(Motion.bouncy, 0.85f), exit = androidx.compose.animation.scaleOut(targetScale = 0.9f))
+                    .glass(RoundedCornerShape(30.dp), strong = true)
+            ) {
+                Column(Modifier.padding(start = 22.dp, end = 22.dp, top = 22.dp, bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.size(52.dp).clip(CircleShape).background(c.tint.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
+                        androidx.compose.material3.Icon(
+                            when {
+                                p.access.contains(com.ibrowser.browser.SiteAccess.CAMERA) -> androidx.compose.material.icons.Icons.Rounded.Videocam
+                                p.access.contains(com.ibrowser.browser.SiteAccess.MICROPHONE) -> androidx.compose.material.icons.Icons.Rounded.Mic
+                                else -> androidx.compose.material.icons.Icons.Rounded.LocationOn
+                            }, null, tint = c.tint, modifier = Modifier.size(28.dp)
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text("Allow “$host” to use your $what?", style = Ios.headline, color = c.label, textAlign = TextAlign.Center)
+                    Spacer(Modifier.height(6.dp))
+                    Text("You can change this later in Settings › Websites.", style = Ios.footnote, color = c.secondary, textAlign = TextAlign.Center)
+                }
+                Box(Modifier.fillMaxWidth().height(0.5.dp).background(c.separator))
+                Row(Modifier.fillMaxWidth().height(52.dp)) {
+                    Box(Modifier.weight(1f).fillMaxSize().tapHighlight { p.decide(false) }, contentAlignment = Alignment.Center) {
+                        Text("Don’t Allow", style = Ios.body, color = c.tint)
+                    }
+                    Box(Modifier.width(0.5.dp).fillMaxSize().background(c.separator))
+                    Box(Modifier.weight(1f).fillMaxSize().tapHighlight { p.decide(true) }, contentAlignment = Alignment.Center) {
+                        Text("Allow", style = Ios.headline, color = c.tint)
                     }
                 }
             }

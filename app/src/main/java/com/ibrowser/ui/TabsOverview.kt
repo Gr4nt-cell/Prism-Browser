@@ -90,9 +90,7 @@ fun TabsOverview(visible: Boolean) {
         var q by remember { mutableStateOf("") }
         val group = Browser.tabs.filter { it.isPrivate == private }
             .filter { q.isBlank() || it.displayTitle.contains(q, true) || it.url.contains(q, true) }
-        val bg = if (private) Color(0xFF151517) else if (c.dark) Color(0xFF0B0B0C) else Color(0xFFE6E6EB)
-
-        Box(Modifier.fillMaxSize().background(bg)) {
+        Box(Modifier.fillMaxSize().then(if (private) Modifier.background(Color(0xFF151517)) else Modifier.wallpaper())) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 // Search tabs
                 Row(
@@ -398,7 +396,7 @@ private fun DeckCard(
                     )
                 } else {
                     Column(
-                        Modifier.fillMaxSize().background(c.grouped),
+                        Modifier.fillMaxSize().wallpaper(),
                         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center
                     ) {
                         if (tab.isStartPage) {

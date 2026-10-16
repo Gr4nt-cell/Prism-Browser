@@ -34,7 +34,7 @@ class FileDownloader(private val d: DownloadItem) {
     private val downloaded = AtomicLong(0)
     private val active = AtomicInteger(0)
 
-    private val minSplit = 512 * 1024L
+    private val minSplit = 256 * 1024L
 
     suspend fun run() {
         val target = d.path?.let { File(it) } ?: DownloadManager.uniqueFile(d.fileName).also {
@@ -172,7 +172,7 @@ class FileDownloader(private val d: DownloadItem) {
                     RandomAccessFile(partFile, "rw").use { raf ->
                         raf.seek(p.pos)
                         val input = r.body!!.byteStream()
-                        val buf = ByteArray(64 * 1024)
+                        val buf = ByteArray(256 * 1024)
                         while (p.pos <= p.end) {
                             if (!coroutineContext.isActive) { call.cancel(); return }
                             val want = minOf(buf.size.toLong(), p.end - p.pos + 1).toInt()
@@ -188,8 +188,8 @@ class FileDownloader(private val d: DownloadItem) {
             } catch (e: IOException) {
                 coroutineContext.ensureActive()
                 attempt++
-                if (attempt > 6) throw e
-                delay(500L * attempt * attempt)
+                if (attempt > 8) throw e
+                delay(250L * attempt * attempt)
             }
         }
     }
@@ -210,7 +210,7 @@ class FileDownloader(private val d: DownloadItem) {
                     if (!append) downloaded.set(0) else downloaded.set(existing)
                     java.io.FileOutputStream(partFile, append).use { out ->
                         val input = r.body!!.byteStream()
-                        val buf = ByteArray(64 * 1024)
+                        val buf = ByteArray(256 * 1024)
                         var last = System.currentTimeMillis()
                         while (true) {
                             if (!coroutineContext.isActive) { call.cancel(); return }

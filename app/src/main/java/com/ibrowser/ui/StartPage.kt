@@ -75,7 +75,7 @@ private val SECTIONS = listOf(
 @Composable
 fun StartPage(tab: BrowserTab?, inSheet: Boolean) {
     val c = Ios.c
-    Column(Modifier.fillMaxSize().background(c.grouped).then(if (!inSheet) Modifier.statusBarsPadding() else Modifier)) {
+    Column(Modifier.fillMaxSize().wallpaper().then(if (!inSheet) Modifier.statusBarsPadding() else Modifier)) {
         Spacer(Modifier.height(8.dp))
         SectionPicker()
         Box(Modifier.weight(1f)) {
@@ -122,7 +122,7 @@ private fun StartHome(tab: BrowserTab?) {
     var editing by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 140.dp)) {
         if (tab?.isPrivate == true) {
-            Column(Modifier.fillMaxWidth().padding(20.dp).clip(RoundedCornerShape(22.dp)).background(c.card).padding(18.dp)) {
+            Column(Modifier.fillMaxWidth().padding(20.dp).glassCard(RoundedCornerShape(22.dp)).padding(18.dp)) {
                 Text("Private Browsing", style = Ios.headline, color = c.label)
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -146,7 +146,7 @@ private fun StartHome(tab: BrowserTab?) {
             SectionHeader("Privacy Report", Modifier.padding(top = 10.dp))
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 20.dp).pressable(scaleTo = 0.97f) { Browser.showPrivacy = true }
-                    .clip(RoundedCornerShape(22.dp)).background(c.card).padding(16.dp),
+                    .glassCard(RoundedCornerShape(22.dp)).padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Outlined.Shield, null, tint = c.label, modifier = Modifier.size(28.dp))
@@ -167,7 +167,7 @@ private fun StartHome(tab: BrowserTab?) {
             LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(Store.readingList.items.take(10), key = { it.url }) { site ->
                     Row(
-                        Modifier.width(260.dp).pressable(scaleTo = 0.96f) { Browser.load(site.url) }.clip(RoundedCornerShape(18.dp)).background(c.card).padding(12.dp),
+                        Modifier.width(260.dp).pressable(scaleTo = 0.96f) { Browser.load(site.url) }.glassCard(RoundedCornerShape(18.dp)).padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         SiteTile(site.url, site.title, size = 44.dp, corner = 10.dp)
@@ -368,7 +368,7 @@ private fun HistoryView() {
             }
         }
         if (confirm) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(16.dp)).background(c.card).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).glassCard(RoundedCornerShape(16.dp)).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Clear all history?", style = Ios.subhead, color = c.label, modifier = Modifier.weight(1f))
                 TextAction("Cancel") { confirm = false }
                 TextAction("Clear", color = c.red, bold = true) { Store.history.clear(); confirm = false }

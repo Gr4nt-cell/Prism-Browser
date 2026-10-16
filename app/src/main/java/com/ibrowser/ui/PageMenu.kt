@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.ChromeReaderMode
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.IosShare
 import androidx.compose.material.icons.outlined.Movie
@@ -109,6 +110,7 @@ fun PageMenu(visible: Boolean) {
                             trailing = if (t.media.isEmpty()) "None" else "${t.media.size}"
                         ) { act { Browser.showMedia = true } }
                     }
+                    MenuItem(Icons.Outlined.FolderOpen, "Open File…") { act { (Browser.activity as? com.ibrowser.MainActivity)?.openFilePicker() } }
                     MenuItem(Icons.Outlined.Download, "Downloads",
                         trailing = DownloadManager.items.count { it.isActive }.takeIf { it > 0 }?.toString()
                     ) { act { Browser.showDownloads = true } }

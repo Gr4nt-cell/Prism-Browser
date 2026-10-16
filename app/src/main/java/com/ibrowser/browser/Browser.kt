@@ -206,7 +206,8 @@ object Browser {
             (!t.contains(' ') && Regex("^[\\w-]+(\\.[\\w-]+)+(:\\d+)?(/.*)?$").matches(t)) ||
             t.startsWith("localhost")
         return when {
-            Regex("^(https?|file|about|data|javascript):", RegexOption.IGNORE_CASE).containsMatchIn(t) -> t
+            Regex("^(https?|file|content|about|data|javascript):", RegexOption.IGNORE_CASE).containsMatchIn(t) -> t
+            t.startsWith("/storage/") || t.startsWith("/sdcard/") -> "file://$t"
             looksUrl -> "https://$t"
             else -> Store.settings.engine.query.replace("%s", URLEncoder.encode(t, "UTF-8"))
         }
@@ -246,6 +247,7 @@ object Browser {
 
     /** Called by the system back button. Returns false if nothing consumed it. */
     fun handleBack(): Boolean {
+        SitePermissions.prompt?.let { it.decide(false); return true }
         if (com.ibrowser.player.Media.visible) { com.ibrowser.player.Media.minimize(); return true }
         when {
             customView != null -> { exitFullscreen(); return true }
@@ -323,7 +325,11 @@ object Browser {
         s.setSupportMultipleWindows(true)
         s.mediaPlaybackRequiresUserGesture = true
         s.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-        s.allowFileAccess = false
+        // local files: file:// pages and content:// documents picked from the file system
+        s.allowFileAccess = true
+        s.allowContentAccess = true
+        @Suppress("DEPRECATION")
+        s.setGeolocationEnabled(true)
         if (t.isPrivate) s.cacheMode = WebSettings.LOAD_NO_CACHE
         t.desktop = Store.settings.desktopDefault
         t.textZoom = Store.settings.textZoom
@@ -401,7 +407,8 @@ object Browser {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url.toString()
                 val scheme = request.url.scheme?.lowercase() ?: return false
-                if (scheme == "http" || scheme == "https" || scheme == "about" || scheme == "data" || scheme == "javascript") {
+                if (scheme == "http" || scheme == "https" || scheme == "about" || scheme == "data" || scheme == "javascript" ||
+                    scheme == "file" || scheme == "content") {
                     // Treat direct stream manifests as downloads
                     return false
                 }
@@ -500,9 +507,29 @@ object Browser {
             }
 
             override fun onGeolocationPermissionsShowPrompt(origin: String, callback: android.webkit.GeolocationPermissions.Callback) {
-                callback.invoke(origin, false, false)
+                SitePermissions.handleGeolocation(origin, callback, t.isPrivate)
+            }
+
+            // Camera / microphone for getUserMedia(), video calls, voice search, QR scanners…
+            override fun onPermissionRequest(request: android.webkit.PermissionRequest) {
+                main.post { SitePermissions.handleWebRequest(request, t.isPrivate) }
+            }
+
+            override fun onPermissionRequestCanceled(request: android.webkit.PermissionRequest) {
+                main.post { if (SitePermissions.prompt?.origin == request.origin.toString()) SitePermissions.prompt = null }
             }
         }
+    }
+
+    /** Open a file picked from the device: media plays in the glass player, everything else opens in a tab. */
+    fun openLocalFile(uri: Uri, name: String, mime: String?) {
+        if (com.ibrowser.player.Media.isPlayableFile(name, mime)) {
+            com.ibrowser.player.Media.play(uri.toString(), name.substringBeforeLast('.'), mime = mime)
+            return
+        }
+        val t = current?.takeIf { it.isStartPage } ?: newTab()
+        load(uri.toString(), t)
+        t.title = name
     }
 
     fun exitFullscreen() {

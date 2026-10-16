@@ -32,7 +32,7 @@ class BrowserTab(
     var thumbnail by mutableStateOf<Bitmap?>(null)
     var blocked by mutableIntStateOf(0)
     var desktop by mutableStateOf(false)
-    var textZoom by mutableIntStateOf(100)
+    var textZoom by mutableIntStateOf(com.ibrowser.data.DEFAULT_TEXT_ZOOM)
     var themeColor by mutableStateOf<Int?>(null)
     var lastAccess = System.currentTimeMillis()
     val media = mutableStateListOf<MediaFound>()

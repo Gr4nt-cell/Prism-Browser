@@ -445,7 +445,7 @@ fun SettingsSheet(visible: Boolean) {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                     Row { Text("Page Zoom", style = Ios.body, color = c.label, modifier = Modifier.weight(1f)); Text("${s.textZoom}%", style = Ios.body, color = c.secondary) }
                     Slider(
-                        s.textZoom.toFloat(), { s.textZoom = (it / 10).toInt() * 10; s.save() }, valueRange = 50f..200f,
+                        s.textZoom.toFloat(), { s.textZoom = (it / 10).toInt() * 10; s.save(); Browser.tabs.forEach { t -> t.textZoom = s.textZoom; t.webView?.settings?.textZoom = s.textZoom } }, valueRange = 50f..200f,
                         colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = c.tint, inactiveTrackColor = c.fill)
                     )
                 }

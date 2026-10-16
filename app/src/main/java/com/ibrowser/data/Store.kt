@@ -41,6 +41,8 @@ enum class SearchEngine(val label: String, val query: String, val suggest: Strin
 }
 
 /** Observable app settings, persisted in SharedPreferences. */
+const val DEFAULT_TEXT_ZOOM = 90
+
 class Settings(private val p: SharedPreferences) {
     var layout by mutableStateOf(ToolbarLayout.valueOf(p.getString("layout", "COMPACT")!!))
     var engine by mutableStateOf(SearchEngine.valueOf(p.getString("engine", "GOOGLE")!!))
@@ -65,7 +67,8 @@ class Settings(private val p: SharedPreferences) {
     var landscapeTabBar by mutableStateOf(p.getBoolean("landTabs", true))
     var lastFilterUpdate by mutableStateOf(p.getLong("filterUpdate", 0L))
     var totalBlocked by mutableStateOf(p.getLong("totalBlocked", 0L))
-    var textZoom by mutableStateOf(p.getInt("textZoom", 100))
+    // default page text size is 90%; existing installs are moved to 90% once
+    var textZoom by mutableStateOf(if (!p.getBoolean("zoom90", false)) DEFAULT_TEXT_ZOOM else p.getInt("textZoom", DEFAULT_TEXT_ZOOM))
     var disabledAdSites by mutableStateOf(p.getStringSet("noAds", emptySet())!!.toSet())
 
     fun save() {
@@ -92,6 +95,7 @@ class Settings(private val p: SharedPreferences) {
             .putLong("filterUpdate", lastFilterUpdate)
             .putLong("totalBlocked", totalBlocked)
             .putInt("textZoom", textZoom)
+            .putBoolean("zoom90", true)
             .putStringSet("noAds", disabledAdSites)
             .apply()
     }

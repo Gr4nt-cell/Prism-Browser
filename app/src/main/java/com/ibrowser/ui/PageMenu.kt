@@ -90,7 +90,7 @@ fun PageMenu(visible: Boolean) {
                     // Text size + reader row
                     Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         SmallBox(Modifier.weight(1f), { Browser.setTextZoom(t.textZoom - 10) }) { Text("A", fontSize = 13.sp, color = c.label) }
-                        SmallBox(Modifier.weight(1f), { Browser.setTextZoom(100) }) {
+                        SmallBox(Modifier.weight(1f), { Browser.setTextZoom(Store.settings.textZoom) }) {
                             Text("${t.textZoom}%", style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = c.label)
                         }
                         SmallBox(Modifier.weight(1f), { Browser.setTextZoom(t.textZoom + 10) }) { Text("A", fontSize = 21.sp, color = c.label) }

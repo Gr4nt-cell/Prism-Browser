@@ -79,42 +79,27 @@ import androidx.compose.ui.unit.sp
 import com.gr4nt.browser.data.hostOf
 import kotlin.math.abs
 
-/**
- * The app wallpaper: the soft lavender gradient (pink-lilac at the top, misty blue at the
- * bottom) with two large blurred hazes, so the glass on top always has colour to refract.
- */
+/** The app background: a plain, flat colour (white in light mode, black in dark mode). */
 @Composable
 fun Modifier.wallpaper(): Modifier {
     val c = Ios.c
-    return this.drawBehind {
-        drawRect(Brush.verticalGradient(0f to c.wallTop, 0.52f to c.wallMid, 1f to c.wallBottom))
-        drawRect(
-            Brush.radialGradient(
-                listOf(c.wallGlowA.copy(alpha = 0.85f), c.wallGlowA.copy(alpha = 0f)),
-                center = androidx.compose.ui.geometry.Offset(size.width * 0.05f, size.height * 0.28f),
-                radius = size.maxDimension * 0.55f
-            )
-        )
-        drawRect(
-            Brush.radialGradient(
-                listOf(c.wallGlowB.copy(alpha = 0.75f), c.wallGlowB.copy(alpha = 0f)),
-                center = androidx.compose.ui.geometry.Offset(size.width * 1.0f, size.height * 0.72f),
-                radius = size.maxDimension * 0.5f
-            )
-        )
-    }
+    return this.background(c.wall)
 }
 
-/** Frosted card that sits on the wallpaper: translucent fill + bright hairline, no heavy shadow. */
+/**
+ * Card on the plain background: near-opaque fill, a faint hairline and a layered soft shadow
+ * (wide ambient + tighter key shadow) so it lifts clearly off white.
+ */
 @Composable
 fun Modifier.glassCard(shape: Shape): Modifier {
     val c = Ios.c
     return this
-        .shadow(6.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.25f else 0.05f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.35f else 0.08f))
+        .shadow(14.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.45f else 0.10f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.55f else 0.16f))
+        .shadow(2.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.3f else 0.06f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.35f else 0.10f))
         .clip(shape)
         .background(c.card)
         .background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (c.dark) 0.05f else 0.35f), 0.4f to Color.White.copy(alpha = 0f)))
-        .border(0.8.dp, Brush.verticalGradient(0f to Color.White.copy(alpha = if (c.dark) 0.22f else 0.95f), 1f to Color.White.copy(alpha = if (c.dark) 0.06f else 0.35f)), shape)
+        .border(0.8.dp, c.cardBorder, shape)
 }
 
 /** Shared spring specs so motion feels consistent everywhere. */
@@ -140,8 +125,8 @@ fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp,
         // plain frosted bar: flat translucent fill, even hairline, softer shadow — no sheen, rim or refraction tint
         return this
             .shadow(elevation * 0.6f, shape, clip = false,
-                ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.35f else 0.08f) * c.glassShadow).coerceAtMost(1f)),
-                spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.45f else 0.14f) * c.glassShadow).coerceAtMost(1f)))
+                ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.35f else 0.14f) * c.glassShadow).coerceAtMost(1f)),
+                spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.45f else 0.22f) * c.glassShadow).coerceAtMost(1f)))
             .clip(shape)
             .background(if (strong) c.glassStrong else c.glass)
             .background(Color.White.copy(alpha = glow * if (c.dark) 0.10f else 0.22f))
@@ -150,8 +135,8 @@ fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp,
     return this
         .shadow(
             elevation, shape, clip = false,
-            ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.40f else 0.10f) * c.glassShadow).coerceAtMost(1f)),
-            spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.55f else 0.18f) * c.glassShadow).coerceAtMost(1f))
+            ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.40f else 0.16f) * c.glassShadow).coerceAtMost(1f)),
+            spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.55f else 0.28f) * c.glassShadow).coerceAtMost(1f))
         )
         .clip(shape)
         .background(if (strong) c.glassStrong else c.glass)

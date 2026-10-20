@@ -107,16 +107,17 @@ fun rememberBackdropColor(bounds: () -> Rect?, side: SampleSide, enabled: Boolea
 fun AdaptiveGlass(backdrop: Color?, content: @Composable () -> Unit) {
     val base = Ios.c
     var darkGlass by remember { mutableStateOf(base.dark) }
-    val target = backdrop ?: if (base.dark) Color(0xFF1C1C1E) else Color(0xFFF2F2F7)
+    val target = backdrop ?: base.wall
     val lum = target.luminance()
     if (backdrop == null) darkGlass = base.dark
     else if (darkGlass && lum > 0.52f) darkGlass = false
     else if (!darkGlass && lum < 0.36f) darkGlass = true
 
     // Over white / near-white pages translucent white glass disappears, so the bar switches to a
-    // soft lavender-grey frost with a firmer outline and shadow (0 = normal, 1 = full boost).
+    // soft neutral-grey frost with a firmer outline and shadow (0 = normal, 1 = full boost).
+    // The app's own background is plain white too, so this also applies with no page behind.
     val onWhite by animateFloatAsState(
-        if (!darkGlass && backdrop != null && lum > 0.80f) ((lum - 0.80f) / 0.12f).coerceIn(0f, 1f) else 0f,
+        if (!darkGlass && lum > 0.80f) ((lum - 0.80f) / 0.12f).coerceIn(0f, 1f) else 0f,
         tween(320), label = "onWhite"
     )
     val st = com.gr4nt.browser.data.Store.settings
@@ -127,7 +128,7 @@ fun AdaptiveGlass(backdrop: Color?, content: @Composable () -> Unit) {
     val palette = (if (darkGlass) DarkIos else LightIos).let { p ->
         // keep the tint subtle: a hint of the colour behind, not a solid paint
         val mixed = lerp(neutral, tint, if (backdrop == null || !st.barAdaptiveTint) 0f else 0.42f)
-        val frosted = lerp(mixed, Color(0xFFE4DEEF), onWhite)       // lavender-grey on white
+        val frosted = lerp(mixed, Color(0xFFEDEDF0), onWhite)       // neutral grey frost on white
         p.copy(
             glass = frosted.copy(alpha = (baseAlpha + (if (darkGlass) 0.02f else 0f) + onWhite * 0.40f * (1f - baseAlpha)).coerceAtMost(0.97f)),
             liquid = st.barLiquidGlass,

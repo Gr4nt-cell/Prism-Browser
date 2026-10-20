@@ -33,21 +33,18 @@ data class IosColors(
     val glassBorder: Color,
     val glassHighlight: Color,
     val scrim: Color,
-    // App wallpaper (sampled from the user's lavender gradient)
+    // App background: plain white (light) / plain black (dark)
     val glassShadow: Float = 1f,                 // shadow strength multiplier for glass
     val liquid: Boolean = true,                  // false = plain frosted bar (no sheen, rim or glow)
-    val wallTop: Color = Color(0xFFDCC4E6),
-    val wallMid: Color = Color(0xFFE8DEF5),
-    val wallBottom: Color = Color(0xFFD3DEF0),
-    val wallGlowA: Color = Color(0xFFE9C6E2),     // pink haze, top-left
-    val wallGlowB: Color = Color(0xFFCFD6F2)      // periwinkle haze, right / bottom
+    val wall: Color = Color(0xFFFFFFFF),
+    val cardBorder: Color = Color(0x14000000)     // hairline that keeps white cards visible on white
 )
 
 val LightIos = IosColors(
     dark = false,
     background = Color(0xFFFFFFFF),
-    grouped = Color(0xFFE8DEF5),
-    card = Color(0x9EFFFFFF),
+    grouped = Color(0xFFFFFFFF),
+    card = Color(0xF7FFFFFF),
     fill = Color(0x1F767680),
     label = Color(0xFF000000),
     secondary = Color(0x993C3C43),
@@ -57,9 +54,9 @@ val LightIos = IosColors(
     red = Color(0xFFFF3B30),
     green = Color(0xFF34C759),
     orange = Color(0xFFFF9500),
-    glass = Color(0x6BFBF8FD),
-    glassStrong = Color(0xD9FBF8FD),
-    glassBorder = Color(0x24000000),
+    glass = Color(0x8CFFFFFF),
+    glassStrong = Color(0xE6FFFFFF),
+    glassBorder = Color(0x1F000000),
     glassHighlight = Color(0xCCFFFFFF),
     scrim = Color(0x26000000)
 )
@@ -67,8 +64,8 @@ val LightIos = IosColors(
 val DarkIos = IosColors(
     dark = true,
     background = Color(0xFF000000),
-    grouped = Color(0xFF1A1630),
-    card = Color(0x5C2E2742),
+    grouped = Color(0xFF000000),
+    card = Color(0xFF1C1C1E),
     fill = Color(0x3D767680),
     label = Color(0xFFFFFFFF),
     secondary = Color(0x99EBEBF5),
@@ -78,16 +75,13 @@ val DarkIos = IosColors(
     red = Color(0xFFFF453A),
     green = Color(0xFF30D158),
     orange = Color(0xFFFF9F0A),
-    glass = Color(0x6B2A2440),
-    glassStrong = Color(0xDE2A2440),
+    glass = Color(0x8C2C2C2E),
+    glassStrong = Color(0xE62C2C2E),
     glassBorder = Color(0x40FFFFFF),
     glassHighlight = Color(0x33FFFFFF),
     scrim = Color(0x66000000),
-    wallTop = Color(0xFF2B1F42),
-    wallMid = Color(0xFF1C1833),
-    wallBottom = Color(0xFF121B2E),
-    wallGlowA = Color(0xFF4A2550),
-    wallGlowB = Color(0xFF233160)
+    wall = Color(0xFF000000),
+    cardBorder = Color(0x26FFFFFF)
 )
 
 val LocalIos = staticCompositionLocalOf { LightIos }

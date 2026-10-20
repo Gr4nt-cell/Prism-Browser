@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.ibrowser"
+    namespace = "com.gr4nt.browser"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.ibrowser"
+        applicationId = "com.gr4nt.browser"
         minSdk = 26
         targetSdk = 35
         // every CI build gets a higher version so updates (APK or AAB) install over the previous one

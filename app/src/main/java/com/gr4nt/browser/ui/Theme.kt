@@ -1,0 +1,135 @@
+package com.gr4nt.browser.ui
+
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+
+@Immutable
+data class IosColors(
+    val dark: Boolean,
+    val background: Color,        // systemBackground
+    val grouped: Color,           // systemGroupedBackground
+    val card: Color,              // secondarySystemGroupedBackground
+    val fill: Color,              // tertiarySystemFill
+    val label: Color,
+    val secondary: Color,
+    val tertiary: Color,
+    val separator: Color,
+    val tint: Color,
+    val red: Color,
+    val green: Color,
+    val orange: Color,
+    val glass: Color,
+    val glassStrong: Color,
+    val glassBorder: Color,
+    val glassHighlight: Color,
+    val scrim: Color,
+    // App wallpaper (sampled from the user's lavender gradient)
+    val glassShadow: Float = 1f,                 // shadow strength multiplier for glass
+    val liquid: Boolean = true,                  // false = plain frosted bar (no sheen, rim or glow)
+    val wallTop: Color = Color(0xFFDCC4E6),
+    val wallMid: Color = Color(0xFFE8DEF5),
+    val wallBottom: Color = Color(0xFFD3DEF0),
+    val wallGlowA: Color = Color(0xFFE9C6E2),     // pink haze, top-left
+    val wallGlowB: Color = Color(0xFFCFD6F2)      // periwinkle haze, right / bottom
+)
+
+val LightIos = IosColors(
+    dark = false,
+    background = Color(0xFFFFFFFF),
+    grouped = Color(0xFFE8DEF5),
+    card = Color(0x9EFFFFFF),
+    fill = Color(0x1F767680),
+    label = Color(0xFF000000),
+    secondary = Color(0x993C3C43),
+    tertiary = Color(0x4D3C3C43),
+    separator = Color(0x4A3C3C43),
+    tint = Color(0xFF007AFF),
+    red = Color(0xFFFF3B30),
+    green = Color(0xFF34C759),
+    orange = Color(0xFFFF9500),
+    glass = Color(0x6BFBF8FD),
+    glassStrong = Color(0xD9FBF8FD),
+    glassBorder = Color(0x24000000),
+    glassHighlight = Color(0xCCFFFFFF),
+    scrim = Color(0x26000000)
+)
+
+val DarkIos = IosColors(
+    dark = true,
+    background = Color(0xFF000000),
+    grouped = Color(0xFF1A1630),
+    card = Color(0x5C2E2742),
+    fill = Color(0x3D767680),
+    label = Color(0xFFFFFFFF),
+    secondary = Color(0x99EBEBF5),
+    tertiary = Color(0x4DEBEBF5),
+    separator = Color(0xA6545458),
+    tint = Color(0xFF0A84FF),
+    red = Color(0xFFFF453A),
+    green = Color(0xFF30D158),
+    orange = Color(0xFFFF9F0A),
+    glass = Color(0x6B2A2440),
+    glassStrong = Color(0xDE2A2440),
+    glassBorder = Color(0x40FFFFFF),
+    glassHighlight = Color(0x33FFFFFF),
+    scrim = Color(0x66000000),
+    wallTop = Color(0xFF2B1F42),
+    wallMid = Color(0xFF1C1833),
+    wallBottom = Color(0xFF121B2E),
+    wallGlowA = Color(0xFF4A2550),
+    wallGlowB = Color(0xFF233160)
+)
+
+val LocalIos = staticCompositionLocalOf { LightIos }
+
+object Ios {
+    val c: IosColors @Composable get() = LocalIos.current
+    val title = TextStyle(fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp)
+    val title3 = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+    val headline = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.4).sp)
+    val body = TextStyle(fontSize = 17.sp, letterSpacing = (-0.4).sp)
+    val callout = TextStyle(fontSize = 16.sp, letterSpacing = (-0.3).sp)
+    val subhead = TextStyle(fontSize = 15.sp, letterSpacing = (-0.2).sp)
+    val footnote = TextStyle(fontSize = 13.sp, letterSpacing = (-0.1).sp)
+    val caption = TextStyle(fontSize = 12.sp)
+    val caption2 = TextStyle(fontSize = 11.sp)
+}
+
+@Composable
+fun IBrowserTheme(content: @Composable () -> Unit) {
+    val dark = isSystemInDarkTheme()
+    val ios = if (dark) DarkIos else LightIos
+    val scheme = if (dark) darkColorScheme(primary = ios.tint, background = ios.background, surface = ios.card)
+    else lightColorScheme(primary = ios.tint, background = ios.background, surface = ios.card)
+    CompositionLocalProvider(LocalIos provides ios) {
+        MaterialTheme(colorScheme = scheme, content = content)
+    }
+}
+
+fun formatBytes(b: Long): String {
+    if (b < 0) return "—"
+    if (b < 1024) return "$b B"
+    val units = arrayOf("KB", "MB", "GB", "TB")
+    var v = b / 1024.0
+    var i = 0
+    while (v >= 1024 && i < units.size - 1) { v /= 1024; i++ }
+    return if (v >= 100) "%.0f %s".format(v, units[i]) else "%.1f %s".format(v, units[i])
+}
+
+fun formatDuration(sec: Long): String {
+    if (sec < 0) return ""
+    val h = sec / 3600
+    val m = (sec % 3600) / 60
+    val s = sec % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
+}

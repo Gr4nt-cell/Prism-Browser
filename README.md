@@ -34,3 +34,6 @@ An Android browser with a Safari (iOS 27) style interface, built natively with K
 ```
 ./gradlew assembleRelease
 ```
+
+## Privacy
+iBrowser collects no personal data — no accounts, analytics or ads. See the [Privacy Policy](PRIVACY.md) (also in the app under Settings › About › Privacy Policy).

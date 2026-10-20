@@ -479,7 +479,11 @@ fun SettingsSheet(visible: Boolean) {
             }
             IosGroup("About", footer = "iBrowser 1.0 — Safari-style browser for Android.") {
                 IosRow("Rules loaded", value = "${AdBlocker.instance.ruleCount}")
-                IosRow("Trackers blocked", value = "${s.totalBlocked}", divider = false)
+                IosRow("Trackers blocked", value = "${s.totalBlocked}")
+                IosRow("Privacy Policy", showChevron = true, divider = false) {
+                    Browser.showSettings = false
+                    Browser.newTab("file:///android_asset/privacy.html")
+                }
             }
         }
     }

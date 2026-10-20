@@ -109,20 +109,17 @@ fun AddressEntry(visible: Boolean) {
 
         Box(Modifier.fillMaxSize().wallpaper()) {
             Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
-                LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 12.dp)) {
-                    if (q.isEmpty()) {
-                        item {
-                            SectionHeader("Favorites")
-                        }
-                        item {
-                            FavoritesMini()
-                        }
+                if (q.isEmpty()) {
+                    Column(Modifier.weight(1f).fillMaxWidth().padding(bottom = 4.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.Bottom) {
                         clipboard.getText()?.text?.takeIf { it.isNotBlank() && it.length < 2000 }?.let { clip ->
-                            item {
-                                SuggestionRow(Icons.Outlined.ContentPaste, "Paste and Go", clip.take(80)) { Browser.load(clip) }
-                            }
+                            SuggestionRow(Icons.Outlined.ContentPaste, "Paste and Go", clip.take(80)) { Browser.load(clip) }
+                            Spacer(Modifier.height(8.dp))
                         }
-                    } else {
+                        SectionHeader("Favorites")
+                        FavoritesMini()
+                    }
+                } else LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 12.dp)) {
+                    run {
                         if (topHit != null) {
                             item { GroupLabel("Top Hit") }
                             item { SiteSuggestion(topHit) }
@@ -243,7 +240,7 @@ private fun FavoritesMini() {
                         Modifier.weight(1f).pressable(scaleTo = 0.88f) { Browser.load(s.url) }.padding(vertical = 8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        SiteTile(s.url, s.title, size = 54.dp, corner = 13.dp)
+                        SiteTile(s.url, s.title, size = 56.dp, corner = 28.dp)
                         Spacer(Modifier.height(5.dp))
                         Text(s.title.ifBlank { hostOf(s.url) }, style = Ios.caption, color = c.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }

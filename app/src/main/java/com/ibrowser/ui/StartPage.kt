@@ -214,7 +214,7 @@ private fun TileGrid(sites: List<Site>, onRemove: (Site) -> Unit) {
                                 .padding(vertical = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            SiteTile(site.url, site.title)
+                            SiteTile(site.url, site.title, size = 62.dp, corner = 31.dp)
                             Spacer(Modifier.height(6.dp))
                             Text(
                                 site.title.ifBlank { hostOf(site.url) }, style = Ios.caption, color = c.label,

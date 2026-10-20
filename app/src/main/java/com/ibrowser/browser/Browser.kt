@@ -67,6 +67,9 @@ data class ContextTarget(val link: String?, val image: String?, val tabId: Strin
 
 data class ReaderContent(val title: String, val byline: String, val site: String, val html: String)
 
+/** Arc-style "Pinch to Summarize" result (computed on the device, no AI service). */
+data class SummaryContent(val title: String, val site: String, val points: List<String>, val minutes: Int, val words: Int)
+
 object Browser {
     private lateinit var app: Context
     private var activityRef: WeakReference<Activity>? = null
@@ -87,6 +90,10 @@ object Browser {
     var showPrivacy by mutableStateOf(false)
     var showSiteSettings by mutableStateOf(false)
     var showLibrary by mutableStateOf(false)
+    var showActions by mutableStateOf(false)       // Arc "^" actions sheet
+    var showArchive by mutableStateOf(false)
+    var summary by mutableStateOf<SummaryContent?>(null)
+    var summarizing by mutableStateOf(false)
     var showTabMenu by mutableStateOf(false)
     var startSection by mutableStateOf(0)      // 0 Start, 1 Bookmarks, 2 Reading List, 3 History
     var findMode by mutableStateOf(false)
@@ -136,16 +143,23 @@ object Browser {
         if (tabs.isNotEmpty()) return
         val p = app.getSharedPreferences("tabs", Context.MODE_PRIVATE)
         val urls = p.getString("urls", "")!!.split('\n').filter { it.isNotBlank() }
-        urls.forEach { u -> tabs.add(BrowserTab(false, if (u == "-") "" else u)) }
+        val times = p.getString("times", "")!!.split('\n')
+        urls.forEachIndexed { i, u ->
+            val t = BrowserTab(false, if (u == "-") "" else u)
+            times.getOrNull(i)?.toLongOrNull()?.let { t.lastAccess = it }
+            tabs.add(t)
+        }
         if (tabs.isEmpty()) tabs.add(BrowserTab(false))
         currentId = tabs.getOrNull(p.getInt("index", 0).coerceIn(0, tabs.size - 1))?.id ?: tabs.first().id
+        main.postDelayed({ archiveStaleTabs() }, 1500)
     }
 
     fun persistTabs() {
         val normal = tabs.filter { !it.isPrivate }
         val urls = normal.joinToString("\n") { it.url.ifBlank { "-" } }
         val idx = normal.indexOfFirst { it.id == currentId }.coerceAtLeast(0)
-        app.getSharedPreferences("tabs", Context.MODE_PRIVATE).edit().putString("urls", urls).putInt("index", idx).apply()
+        val times = normal.joinToString("\n") { it.lastAccess.toString() }
+        app.getSharedPreferences("tabs", Context.MODE_PRIVATE).edit().putString("urls", urls).putString("times", times).putInt("index", idx).apply()
     }
 
     fun newTab(url: String = "", private: Boolean = current?.isPrivate ?: false, parent: String? = null, select: Boolean = true): BrowserTab {
@@ -164,10 +178,29 @@ object Browser {
         findMode = false
     }
 
+    /** Arc-style auto-archive: tabs you haven't opened for a while move to the Archive. */
+    fun archiveStaleTabs() {
+        val hours = Store.settings.archiveAfterHours
+        if (hours <= 0) return
+        val cutoff = System.currentTimeMillis() - hours * 3_600_000L
+        val stale = tabs.filter { !it.isPrivate && it.id != currentId && it.lastAccess < cutoff }
+        stale.forEach { close(it.id) }
+        if (stale.isNotEmpty()) toast("${stale.size} old tab${if (stale.size == 1) "" else "s"} moved to the Archive")
+    }
+
+    fun reopenArchived(site: Site) {
+        Store.archive.remove(site.url)
+        val t = newTab(site.url, private = false)
+        t.title = site.title
+        showArchive = false; showTabs = false
+    }
+
     fun close(id: String) {
         val i = tabs.indexOfFirst { it.id == id }
         if (i < 0) return
         val t = tabs[i]
+        // closed tabs go to the Archive (never private ones, never empty start pages)
+        if (!t.isPrivate && !t.isStartPage) Store.archive.add(Site(t.url, t.displayTitle, System.currentTimeMillis()))
         tabs.removeAt(i)
         t.webView?.let { wv ->
             (wv.parent as? android.view.ViewGroup)?.removeView(wv)
@@ -271,6 +304,9 @@ object Browser {
             showPrivacy -> { showPrivacy = false; return true }
             showSiteSettings -> { showSiteSettings = false; return true }
             showLibrary -> { showLibrary = false; return true }
+            showActions -> { showActions = false; return true }
+            showArchive -> { showArchive = false; return true }
+            summary != null || summarizing -> { summary = null; summarizing = false; return true }
             showTabMenu -> { showTabMenu = false; return true }
             showSettings -> { showSettings = false; return true }
             showDownloads -> { showDownloads = false; return true }
@@ -362,6 +398,25 @@ object Browser {
             else if (dy > 12) toolbarCollapsed = true
             else if (dy < -24) toolbarCollapsed = false
         }
+
+        // Arc-style Pinch to Summarize: a pinch-in gesture when the page can't zoom out any further
+        val pinch = android.view.ScaleGestureDetector(wv.context, object : android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            var acc = 1f
+            var startScale = 1f
+            @Suppress("DEPRECATION")
+            override fun onScaleBegin(d: android.view.ScaleGestureDetector): Boolean { acc = 1f; startScale = wv.scale; return true }
+            override fun onScale(d: android.view.ScaleGestureDetector): Boolean { acc *= d.scaleFactor; return false }
+            @Suppress("DEPRECATION")
+            override fun onScaleEnd(d: android.view.ScaleGestureDetector) {
+                val pageZoomedOut = (startScale - wv.scale) / startScale > 0.06f
+                if (Store.settings.pinchToSummarize && acc < 0.6f && !pageZoomedOut && t.id == currentId) {
+                    wv.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                    summarize()
+                }
+            }
+        })
+        @Suppress("ClickableViewAccessibility")
+        wv.setOnTouchListener { _, e -> pinch.onTouchEvent(e); false }
 
         wv.setFindListener { active, count, done ->
             if (done) { findCount = count; findIndex = if (count == 0) 0 else active + 1 }
@@ -712,6 +767,31 @@ object Browser {
                     reader = ReaderContent(json.optString("title"), json.optString("byline"), json.optString("site"), json.optString("html"))
                 } else toast("Reader isn't available for this page")
             }.onFailure { toast("Reader isn't available for this page") }
+        }
+    }
+
+    /** Pinch to Summarize: extract the article and pick its most representative sentences. */
+    fun summarize() {
+        val t = current ?: return
+        val wv = t.webView ?: return
+        if (t.isStartPage || summarizing) return
+        summarizing = true
+        wv.evaluateJavascript(readerJs) { res ->
+            val json = runCatching { JSONObject(org.json.JSONTokener(res).nextValue() as String) }.getOrNull()
+            if (json == null || !json.optBoolean("ok")) {
+                summarizing = false
+                toast("There isn't enough text on this page to summarize")
+                return@evaluateJavascript
+            }
+            val title = json.optString("title"); val site = json.optString("site"); val html = json.optString("html")
+            Thread {
+                val result = Summarizer.summarize(html)
+                main.post {
+                    summarizing = false
+                    if (result == null) toast("There isn't enough text on this page to summarize")
+                    else summary = SummaryContent(title.ifBlank { t.displayTitle }, site, result.points, result.minutes, result.words)
+                }
+            }.start()
         }
     }
 

@@ -42,6 +42,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Lock
@@ -92,7 +93,7 @@ import kotlin.math.roundToInt
 fun TabsOverview(visible: Boolean) {
     AnimatedVisibility(visible, enter = fadeIn(tween(200)), exit = fadeOut(tween(220))) {
         val c = Ios.c
-        LaunchedEffect(Unit) { Browser.tabsPrivate = Browser.current?.isPrivate ?: false }
+        LaunchedEffect(Unit) { Browser.tabsPrivate = Browser.current?.isPrivate ?: false; Browser.archiveStaleTabs() }
         val private = Browser.tabsPrivate
         var q by remember { mutableStateOf("") }
         val group = Browser.tabs.filter { it.isPrivate == private }
@@ -140,6 +141,10 @@ fun TabsOverview(visible: Boolean) {
                     Browser.newTab(private = private)
                     Browser.showTabs = false
                     Browser.editing = true
+                }
+                if (!private) {
+                    Spacer(Modifier.width(8.dp))
+                    GlassCircleButton(Icons.Outlined.Inventory2, "Archive") { Browser.showArchive = true }
                 }
                 Spacer(Modifier.weight(1f))
                 Row(Modifier.height(46.dp).glass(RoundedCornerShape(23.dp)).padding(4.dp)) {

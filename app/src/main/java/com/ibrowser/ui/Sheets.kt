@@ -374,16 +374,31 @@ fun SettingsSheet(visible: Boolean) {
                 }
                 IosRow("Downloads", showChevron = true, divider = false) { Browser.showSettings = false; Browser.showDownloads = true }
             }
-            IosGroup("Tabs", footer = "Compact puts the page menu, address and Tabs button in one floating bar, like Safari on iOS 27.") {
+            IosGroup("Layout", footer = "Arc: tabs · address · ^ actions, like Arc Search. Compact, Bottom and Top are Safari-style layouts.") {
                 ToolbarLayout.entries.forEachIndexed { i, l ->
                     IosRow(
-                        l.name.lowercase().replaceFirstChar { it.uppercase() },
+                        when (l) { ToolbarLayout.ARC -> "Arc"; else -> "Safari · " + l.name.lowercase().replaceFirstChar { it.uppercase() } },
                         divider = i < ToolbarLayout.entries.size - 1,
                         trailing = { if (s.layout == l) Text("✓", color = c.tint, style = Ios.headline) }
                     ) { s.layout = l; s.save() }
                 }
             }
             ToolbarAppearanceGroup()
+            IosGroup("Tabs", footer = "Closed tabs and tabs you haven't opened for a while move to the Archive (in the tab switcher). Pinch a page inward to get a quick summary.") {
+                var archiveOpen by remember { mutableStateOf(false) }
+                Box {
+                    IosRow("Archive Tabs After", value = archiveLabel(s.archiveAfterHours), showChevron = true) { archiveOpen = true }
+                    DropdownMenu(archiveOpen, { archiveOpen = false }) {
+                        listOf(12, 24, 168, 720, 0).forEach { h ->
+                            DropdownMenuItem({ Text(archiveLabel(h) + if (h == s.archiveAfterHours) "  ✓" else "") }, {
+                                s.archiveAfterHours = h; s.save(); archiveOpen = false
+                            })
+                        }
+                    }
+                }
+                IosRow("Pinch to Summarize", trailing = { IosSwitch(s.pinchToSummarize) { s.pinchToSummarize = it; s.save() } })
+                IosRow("Archive", value = "${Store.archive.items.size}", showChevron = true, divider = false) { Browser.showSettings = false; Browser.showArchive = true }
+            }
             IosGroup("Privacy & Security") {
                 IosRow("Block Ads & Trackers", trailing = { IosSwitch(s.adBlock) { s.adBlock = it; s.save() } })
                 IosRow("Hide Ad Elements", subtitle = "Cosmetic filtering & YouTube ad skipping", trailing = { IosSwitch(s.cosmetic) { s.cosmetic = it; s.save() } })

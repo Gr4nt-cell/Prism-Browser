@@ -103,7 +103,7 @@ fun BrowserApp() {
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val topBarH = if (layout == ToolbarLayout.TOP && !Browser.toolbarHidden) (if (Browser.toolbarCollapsed) 34.dp else 64.dp) else 0.dp
     val bottomInset = when (layout) {
-        ToolbarLayout.COMPACT -> navBottom
+        ToolbarLayout.ARC, ToolbarLayout.COMPACT -> navBottom
         ToolbarLayout.BOTTOM -> navBottom
         ToolbarLayout.TOP -> navBottom + if (Browser.toolbarCollapsed || Browser.toolbarHidden) 0.dp else 56.dp
     }
@@ -144,7 +144,8 @@ fun BrowserApp() {
         val sampling = tab != null && !tab.isStartPage && !Browser.editing && !Browser.showTabs && Browser.customView == null &&
             Browser.reader == null && !Browser.showPageMenu && !Browser.showTabMenu && Browser.contextTarget == null &&
             !Browser.showDownloads && !Browser.showSettings && !Browser.showMedia && !Browser.showLibrary &&
-            !Browser.showPrivacy && !Browser.showSiteSettings && Browser.pendingDownload == null
+            !Browser.showPrivacy && !Browser.showSiteSettings && Browser.pendingDownload == null &&
+            !Browser.showActions && !Browser.showArchive && Browser.summary == null && !Browser.summarizing
         val bottomBackdrop by rememberBackdropColor({ bottomBounds }, SampleSide.ABOVE, sampling)
 
         // ---- Auto-hide: the toolbar slides away after a few seconds without any touch ----
@@ -166,6 +167,12 @@ fun BrowserApp() {
 
         if (tab != null && !Browser.findMode) {
             when (layout) {
+                ToolbarLayout.ARC -> Box(
+                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 6.dp)
+                        .onGloballyPositioned { bottomBounds = it.boundsInWindow() }.then(hideBottom)
+                ) {
+                    AdaptiveGlass(bottomBackdrop) { ArcToolbar(tab) }
+                }
                 ToolbarLayout.COMPACT -> Box(
                     Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 6.dp)
                         .onGloballyPositioned { bottomBounds = it.boundsInWindow() }.then(hideBottom)
@@ -207,6 +214,9 @@ fun BrowserApp() {
         PrivacySheet(Browser.showPrivacy)
         SiteSettingsSheet(Browser.showSiteSettings)
         LibrarySheet(Browser.showLibrary)
+        ArcActionsSheet(Browser.showActions && tab != null)
+        ArchiveSheet(Browser.showArchive)
+        SummaryOverlay(Browser.summary, Browser.summarizing)
         ReaderOverlay(Browser.reader)
         ContextMenuOverlay(Browser.contextTarget)
         // ---- Media: mini player above the toolbar, full glass player on top ----
@@ -216,6 +226,7 @@ fun BrowserApp() {
                 Browser.idleHidden -> 12.dp
                 Browser.toolbarCollapsed || Browser.toolbarHidden -> 46.dp
                 layout == ToolbarLayout.BOTTOM -> 128.dp
+                layout == ToolbarLayout.ARC -> 72.dp
                 else -> 68.dp
             }
             val liftAnim by androidx.compose.animation.core.animateDpAsState(lift, androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 380f), label = "miniLift")

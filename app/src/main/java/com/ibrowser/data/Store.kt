@@ -29,7 +29,8 @@ data class Site(
     }
 }
 
-enum class ToolbarLayout { COMPACT, BOTTOM, TOP }
+/** ARC = Arc Search style (tabs · address capsule · ^ actions); the others are Safari-style. */
+enum class ToolbarLayout { ARC, COMPACT, BOTTOM, TOP }
 
 enum class SearchEngine(val label: String, val query: String, val suggest: String?) {
     GOOGLE("Google", "https://www.google.com/search?q=%s", "https://suggestqueries.google.com/complete/search?client=firefox&q=%s"),
@@ -44,7 +45,14 @@ enum class SearchEngine(val label: String, val query: String, val suggest: Strin
 const val DEFAULT_TEXT_ZOOM = 90
 
 class Settings(private val p: SharedPreferences) {
-    var layout by mutableStateOf(ToolbarLayout.valueOf(p.getString("layout", "COMPACT")!!))
+    // Arc Search interface is the default; existing installs are switched to it once
+    var layout by mutableStateOf(
+        if (!p.getBoolean("arcMigrated", false)) ToolbarLayout.ARC
+        else runCatching { ToolbarLayout.valueOf(p.getString("layout", "ARC")!!) }.getOrDefault(ToolbarLayout.ARC)
+    )
+    /** Archive tabs not opened for this many hours (0 = never). Arc's default is 24 h. */
+    var archiveAfterHours by mutableStateOf(p.getInt("archiveHours", 24))
+    var pinchToSummarize by mutableStateOf(p.getBoolean("pinchSummary", true))
     var engine by mutableStateOf(SearchEngine.valueOf(p.getString("engine", "GOOGLE")!!))
     var adBlock by mutableStateOf(p.getBoolean("adBlock", true))
     var cosmetic by mutableStateOf(p.getBoolean("cosmetic", true))
@@ -80,6 +88,9 @@ class Settings(private val p: SharedPreferences) {
     fun save() {
         p.edit()
             .putString("layout", layout.name)
+            .putBoolean("arcMigrated", true)
+            .putInt("archiveHours", archiveAfterHours)
+            .putBoolean("pinchSummary", pinchToSummarize)
             .putString("engine", engine.name)
             .putBoolean("adBlock", adBlock)
             .putBoolean("cosmetic", cosmetic)
@@ -173,6 +184,8 @@ object Store {
     lateinit var favorites: SiteList
     lateinit var history: SiteList
     lateinit var readingList: SiteList
+    /** Arc-style Archive: tabs that were closed or auto-archived, newest first. */
+    lateinit var archive: SiteList
 
     fun init(ctx: Context) {
         settings = Settings(ctx.getSharedPreferences("settings", Context.MODE_PRIVATE))
@@ -181,6 +194,7 @@ object Store {
         favorites = SiteList(File(dir, "favorites.json"))
         history = SiteList(File(dir, "history.json"), 10000)
         readingList = SiteList(File(dir, "reading.json"))
+        archive = SiteList(File(dir, "archive.json"), 2000)
         if (favorites.items.isEmpty() && !File(dir, "favorites.json").exists()) {
             listOf(
                 Site("https://www.google.com", "Google"),

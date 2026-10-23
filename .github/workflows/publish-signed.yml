@@ -1,0 +1,32 @@
+name: Publish signed build
+
+on:
+  push:
+    branches: [signed-builds]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check signatures
+        run: |
+          jarsigner -verify iBrowser.aab | tail -1
+          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs iBrowser.apk | head -3
+          sha256sum iBrowser.apk iBrowser.aab
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: iBrowser (latest build)
+          body: |
+            Signed build 1.0.21 (source commit 8b62320).
+            - **iBrowser.apk** — install on your phone or tablet (apksigner v2 + v3).
+            - **iBrowser.aab** — Android App Bundle for Google Play (jarsigner).
+            Signing certificate SHA-256: 24:94:61:7C:40:B8:4C:99:0A:2F:4C:99:80:15:21:91:C8:0C:17:EF:7A:61:82:B5:D8:8D:0F:57:9B:8B:44:A3
+          make_latest: true
+          files: |
+            iBrowser.apk
+            iBrowser.aab

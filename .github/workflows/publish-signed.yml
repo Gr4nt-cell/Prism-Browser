@@ -22,7 +22,7 @@ jobs:
           tag_name: latest
           name: iBrowser (latest build)
           body: |
-            Signed build 1.0.22 (source commit 42f31cc) — Arc UI, open links in apps.
+            Signed build 1.0.23 (source commit 3a44d16) — stronger shadows, dark mode setting, iOS Recents tabs.
             - **iBrowser.apk** — install on your phone or tablet (apksigner v2 + v3).
             - **iBrowser.aab** — Android App Bundle for Google Play (jarsigner).
             Signing certificate SHA-256: 24:94:61:7C:40:B8:4C:99:0A:2F:4C:99:80:15:21:91:C8:0C:17:EF:7A:61:82:B5:D8:8D:0F:57:9B:8B:44:A3

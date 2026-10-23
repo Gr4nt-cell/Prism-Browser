@@ -101,6 +101,7 @@ fun PageMenu(visible: Boolean) {
                         MenuDivider(true)
                         MenuItem(Icons.Outlined.IosShare, "Share") { act { Browser.share(t.url, t.title) } }
                         MenuItem(Icons.Outlined.ContentCopy, "Copy Link") { act { Browser.copy(t.url) } }
+                        MenuItem(Icons.AutoMirrored.Outlined.OpenInNew, "Open in App…") { act { Browser.activity?.let { com.gr4nt.browser.browser.AppLinks.openWith(it, t.url) } } }
                         MenuItem(Icons.Outlined.BookmarkAdd, "Add Bookmark") { act { Browser.addBookmark() } }
                         MenuItem(Icons.Outlined.StarOutline, "Add to Favorites") { act { Browser.addFavorite() } }
                         MenuItem(Icons.Outlined.AddBox, "Add to Reading List") { act { Browser.addReadingList() } }
@@ -183,6 +184,7 @@ fun ContextMenuOverlay(target: ContextTarget?) {
                             act { Browser.newTab(link, private = tab?.isPrivate ?: false, parent = tgt.tabId, select = false); Browser.toast("Opened in background") }
                         }
                         MenuItem(Icons.Outlined.VisibilityOff, "Open in Private Tab") { act { Browser.load(link, Browser.newTab(private = true)) } }
+                        MenuItem(Icons.AutoMirrored.Outlined.OpenInNew, "Open in App…") { act { Browser.activity?.let { com.gr4nt.browser.browser.AppLinks.openWith(it, link) } } }
                         MenuItem(Icons.Outlined.AddBox, "Add to Reading List") { act { Browser.addReadingList(link, link) } }
                         MenuItem(Icons.Outlined.ContentCopy, "Copy Link") { act { Browser.copy(link) } }
                         MenuItem(Icons.Outlined.IosShare, "Share…") { act { Browser.share(link) } }

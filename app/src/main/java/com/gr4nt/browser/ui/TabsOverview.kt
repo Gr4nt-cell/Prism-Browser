@@ -47,6 +47,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -95,6 +96,8 @@ fun TabsOverview(visible: Boolean) {
         val c = Ios.c
         LaunchedEffect(Unit) { Browser.tabsPrivate = Browser.current?.isPrivate ?: false; Browser.archiveStaleTabs() }
         val private = Browser.tabsPrivate
+        // Arc Search: an Android-Recents style carousel; Safari layouts keep the iOS deck
+        val arc = com.gr4nt.browser.data.Store.settings.layout == com.gr4nt.browser.data.ToolbarLayout.ARC
         var q by remember { mutableStateOf("") }
         val group = Browser.tabs.filter { it.isPrivate == private }
             .filter { q.isBlank() || it.displayTitle.contains(q, true) || it.url.contains(q, true) }
@@ -115,6 +118,15 @@ fun TabsOverview(visible: Boolean) {
                         modifier = Modifier.weight(1f),
                         decorationBox = { inner -> Box { if (q.isEmpty()) Text("Search Tabs", style = Ios.body, color = c.secondary); inner() } }
                     )
+                    if (arc) {
+                        // Arc has no mode switcher; a small toggle keeps Private Browsing reachable
+                        Text(
+                            if (private) "Private ✓" else "Private",
+                            style = Ios.footnote.copy(fontWeight = FontWeight.SemiBold),
+                            color = if (private) c.tint else c.secondary,
+                            modifier = Modifier.pressable(scaleTo = 0.9f) { Browser.tabsPrivate = !private }.padding(horizontal = 6.dp, vertical = 4.dp)
+                        )
+                    }
                 }
 
                 Box(
@@ -126,11 +138,28 @@ fun TabsOverview(visible: Boolean) {
                     if (group.isEmpty()) {
                         EmptyDeck(private, q.isNotBlank())
                     } else {
-                        CardDeck(group, private)
+                        CardDeck(group, private, arc)
                     }
                 }
             }
 
+            if (arc) {
+                // Arc Search tab switcher bar:  [Archive]   ( + )   [Settings]
+                Row(
+                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 28.dp, vertical = 10.dp).fillMaxWidth()
+                        .animateEnterExit(enter = slideInVertically(spring(0.82f, 320f)) { it * 2 }, exit = slideOutVertically(spring(1f, 420f)) { it * 2 }),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    GlassCircleButton(Icons.Outlined.Inventory2, "Archive", size = 50.dp) { Browser.showArchive = true }
+                    GlassCircleButton(Icons.Outlined.Add, "New Tab", size = 66.dp) {
+                        Browser.newTab(private = private)
+                        Browser.showTabs = false
+                        Browser.editing = true
+                    }
+                    GlassCircleButton(Icons.Outlined.Settings, "Settings", size = 50.dp) { Browser.showSettings = true }
+                }
+            } else
             // Bottom glass bar: +  |  Private / N Tabs  |  Done
             Row(
                 Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp).fillMaxWidth()
@@ -188,15 +217,17 @@ private fun EmptyDeck(private: Boolean, searching: Boolean) {
 }
 
 /** Horizontal x offset (as a fraction of card width) for a card at relative position [rel]. */
-private fun deckX(rel: Float): Float =
-    if (rel >= 0f) rel * 0.93f                       // newer tabs: fan out to the right
+private fun deckX(rel: Float, arc: Boolean = false): Float =
+    if (arc) rel * 1.06f                             // Arc / Android Recents: cards side by side
+    else if (rel >= 0f) rel * 0.93f                  // newer tabs: fan out to the right
     else -0.36f * ln(1f + (-rel) * 1.7f)              // older tabs: pile up behind, on the left
 
 /** Title/close visibility: fully visible for the focused card and newer, fading out as a card sinks into the pile. */
-private fun titleAlpha(rel: Float): Float = if (rel >= -0.3f) 1f else (1f - (-rel - 0.3f) / 0.5f).coerceIn(0f, 1f)
+private fun titleAlpha(rel: Float, arc: Boolean = false): Float = if (arc) 1f else if (rel >= -0.3f) 1f else (1f - (-rel - 0.3f) / 0.5f).coerceIn(0f, 1f)
 
-private fun deckScale(rel: Float): Float =
-    if (rel >= 0f) 1f else (1f + rel * 0.045f).coerceAtLeast(0.8f)
+private fun deckScale(rel: Float, arc: Boolean = false): Float =
+    if (arc) 1f - abs(rel).coerceAtMost(1f) * 0.1f
+    else if (rel >= 0f) 1f else (1f + rel * 0.045f).coerceAtLeast(0.8f)
 
 /** Spring used when the deck settles after a swipe: quick, with almost no wobble. */
 private val DeckSettle = spring<Float>(dampingRatio = 0.88f, stiffness = 420f)
@@ -204,7 +235,7 @@ private val DeckSettle = spring<Float>(dampingRatio = 0.88f, stiffness = 420f)
 private val DeckReflow = spring<Float>(dampingRatio = 0.86f, stiffness = 360f)
 
 @Composable
-private fun CardDeck(group: List<BrowserTab>, private: Boolean) {
+private fun CardDeck(group: List<BrowserTab>, private: Boolean, arc: Boolean = false) {
     val scope = rememberCoroutineScope()
     val view = LocalView.current
     val density = LocalDensity.current
@@ -239,7 +270,7 @@ private fun CardDeck(group: List<BrowserTab>, private: Boolean) {
         val cardW = w * 0.72f
         val cardH = (h * 0.74f).coerceAtMost(cardW * 2.05f)
         // a little less than one card width per card → flicking through feels quicker
-        val step = cardW * 0.82f
+        val step = if (arc) cardW * 1.06f else cardW * 0.82f
         val cardWdp = with(density) { cardW.toDp() }
         val cardHdp = with(density) { cardH.toDp() }
 
@@ -291,6 +322,7 @@ private fun CardDeck(group: List<BrowserTab>, private: Boolean) {
                         cardHdp = cardHdp,
                         screenH = h,
                         private = private,
+                        arc = arc,
                         onFocus = { settleTo(i.toFloat()) }
                     )
                 }
@@ -310,6 +342,7 @@ private fun DeckCard(
     cardHdp: androidx.compose.ui.unit.Dp,
     screenH: Float,
     private: Boolean,
+    arc: Boolean,
     onFocus: () -> Unit
 ) {
     val c = Ios.c
@@ -352,13 +385,14 @@ private fun DeckCard(
                     val r = rel()
                     // lift progress: 0 at rest → 1 when the card has travelled ~60% of the screen
                     val lift = (-dy / (screenH * 0.6f)).coerceIn(0f, 1f)
-                    val s = deckScale(r) * press.value * zoom.value * (1f - lift * 0.12f)
-                    translationX = deckX(r) * cardW
-                    translationY = dy + (if (r < 0f) (-r).coerceAtMost(4f) * 6f else 0f)
+                    val s = deckScale(r, arc) * press.value * zoom.value * (1f - lift * 0.12f)
+                    translationX = deckX(r, arc) * cardW
+                    translationY = dy + (if (r < 0f && !arc) (-r).coerceAtMost(4f) * 6f else 0f)
                     scaleX = s; scaleY = s
                     rotationX = lift * 6f
                     cameraDistance = 14f * density
                     alpha = when {
+                        arc && abs(r) > 2.5f -> 0f
                         r < -5f -> 0f
                         r < -4f -> 1f - (-r - 4f)
                         else -> 1f
@@ -381,10 +415,10 @@ private fun DeckCard(
                     tab.displayTitle, style = Ios.footnote.copy(fontWeight = FontWeight.SemiBold),
                     color = if (private || c.dark) Color.White else c.label, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     // cards buried in the pile show only their icon, like iOS Recents
-                    modifier = Modifier.weight(1f).graphicsLayer { alpha = titleAlpha(rel()) }
+                    modifier = Modifier.weight(1f).graphicsLayer { alpha = titleAlpha(rel(), arc) }
                 )
                 Box(
-                    Modifier.size(26.dp).graphicsLayer { val r = rel(); alpha = if (r > 0.5f) 0f else titleAlpha(r) }
+                    Modifier.size(26.dp).graphicsLayer { val r = rel(); alpha = if (arc) (1f - abs(r)).coerceIn(0f, 1f) else if (r > 0.5f) 0f else titleAlpha(r) }
                         .pressable(scaleTo = 0.8f) { flyAway(-3000f) }
                         .clip(CircleShape).background(Color.Black.copy(alpha = 0.28f)),
                     contentAlignment = Alignment.Center
@@ -470,7 +504,7 @@ private fun DeckCard(
                 Box(
                     Modifier.fillMaxSize().graphicsLayer {
                         val r = rel()
-                        alpha = if (r < 0f) ((-r) * 0.12f).coerceAtMost(0.4f) else 0f
+                        alpha = if (r < 0f && !arc) ((-r) * 0.12f).coerceAtMost(0.4f) else 0f
                     }.background(Color.Black)
                 )
                 if (isCurrent) {

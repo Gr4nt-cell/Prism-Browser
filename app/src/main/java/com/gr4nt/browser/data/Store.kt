@@ -81,6 +81,8 @@ class Settings(private val p: SharedPreferences) {
     var landscapeTabBar by mutableStateOf(p.getBoolean("landTabs", true))
     /** Safari-for-Mac chrome on tablets / desktops (smallest width >= 600dp). */
     var desktopLayout by mutableStateOf(p.getBoolean("desktopLayout", true))
+    /** Open links in installed apps: 0 Ask, 1 Always, 2 Never (see AppLinks). */
+    var openInApps by mutableStateOf(p.getInt("openInApps", 0))
     var lastFilterUpdate by mutableStateOf(p.getLong("filterUpdate", 0L))
     var totalBlocked by mutableStateOf(p.getLong("totalBlocked", 0L))
     // default page text size is 90%; existing installs are moved to 90% once
@@ -108,6 +110,7 @@ class Settings(private val p: SharedPreferences) {
             .putBoolean("barAdaptive", barAdaptiveTint)
             .putBoolean("autoHide", autoHideToolbar)
             .putBoolean("desktopLayout", desktopLayout)
+            .putInt("openInApps", openInApps)
             .putInt("autoHideSec", autoHideSeconds)
             .putInt("maxParallel", maxParallel)
             .putBoolean("askDl", askBeforeDownload)

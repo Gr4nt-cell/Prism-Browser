@@ -75,6 +75,8 @@ private val SECTIONS = listOf(
 @Composable
 fun StartPage(tab: BrowserTab?, inSheet: Boolean) {
     val c = Ios.c
+    // Arc Search's new tab is just Top Sites; Bookmarks/History stay in the ^ menu and Library
+    if (!inSheet && Store.settings.layout == com.gr4nt.browser.data.ToolbarLayout.ARC) { ArcHome(tab); return }
     Column(Modifier.fillMaxSize().wallpaper().then(if (!inSheet) Modifier.statusBarsPadding() else Modifier)) {
         Spacer(Modifier.height(8.dp))
         SectionPicker()

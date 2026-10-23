@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BookmarkAdd
@@ -126,17 +128,16 @@ fun ArcToolbar(tab: BrowserTab) {
                 ArcMiniPill(tab)
             }
         } else {
+            // Arc Search: one bar, tinted by the page — [tabs]  site name  [^]
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(56.dp)
+                    .glass(RoundedCornerShape(28.dp))
+                    .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TabCountButton()
                 ArcCapsule(tab, Modifier.weight(1f))
-                GlassCircleButton(
-                    Icons.Outlined.KeyboardArrowUp, "Actions", size = 50.dp,
-                    onLongClick = { if (!tab.isStartPage) Browser.share(tab.url, tab.title) }
-                ) { Browser.showActions = true }
+                ArcChevron(tab)
             }
         }
     }
@@ -149,16 +150,19 @@ private fun TabCountButton() {
     var pressed by remember { mutableStateOf(false) }
     val glow by animateFloatAsState(if (pressed) 1f else 0f, Motion.smooth, label = "tabsGlow")
     Box(
-        Modifier.size(50.dp)
+        Modifier.size(48.dp)
             .pressable(scaleTo = 0.84f, onLongClick = { Browser.newTab(); Browser.editing = true }, onPressedChange = { pressed = it }) {
                 Browser.captureThumbnail(); Browser.showTabs = true
             }
-            .glass(CircleShape, glow = glow),
+            .clip(CircleShape).background(c.fill.copy(alpha = c.fill.alpha * 2.2f * glow)),
         contentAlignment = Alignment.Center
     ) {
         // Arc's tab icon: a rounded square with the tab count inside
+        // Arc's tab icon: two stacked rounded squares, the front one holding the tab count
+        Box(Modifier.offset(x = 3.dp, y = (-3).dp).size(22.dp).border(1.8.dp, c.label.copy(alpha = 0.45f), RoundedCornerShape(6.dp)))
         Box(
-            Modifier.size(24.dp).border(2.dp, c.label, RoundedCornerShape(7.dp)),
+            Modifier.offset(x = (-1).dp, y = 1.dp).size(22.dp).clip(RoundedCornerShape(6.dp)).background(c.glassStrong)
+                .border(1.8.dp, c.label, RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -181,10 +185,10 @@ private fun ArcCapsule(tab: BrowserTab, modifier: Modifier) {
     val glow by animateFloatAsState(if (pressed) 1f else 0f, Motion.smooth, label = "capGlow")
     Box(
         modifier
-            .height(50.dp)
+            .height(46.dp)
             .graphicsLayer { translationX = shift; translationY = lift }
             .pressable(scaleTo = 0.97f, haptic = false, onPressedChange = { pressed = it }) { Browser.editing = true }
-            .glass(RoundedCornerShape(25.dp), glow = glow)
+            .clip(RoundedCornerShape(23.dp)).background(c.fill.copy(alpha = c.fill.alpha * 1.6f * glow))
             .pointerInput(tab.id) {
                 detectDragGestures(
                     onDragEnd = {
@@ -201,9 +205,7 @@ private fun ArcCapsule(tab: BrowserTab, modifier: Modifier) {
     ) {
         Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             if (tab.isStartPage) {
-                Icon(Icons.Outlined.Search, null, tint = c.secondary, modifier = Modifier.size(19.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Search or type a URL", style = Ios.callout, color = c.secondary, maxLines = 1, modifier = Modifier.weight(1f))
+                Text("Search or type a URL", style = Ios.callout, color = c.secondary, maxLines = 1, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
             } else {
                 if (tab.isPrivate) { Icon(Icons.Outlined.VisibilityOff, null, tint = c.secondary, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(5.dp)) }
                 if (tab.secure) { Icon(Icons.Outlined.Lock, null, tint = c.secondary, modifier = Modifier.size(12.dp)); Spacer(Modifier.width(5.dp)) }
@@ -232,6 +234,22 @@ private fun ArcCapsule(tab: BrowserTab, modifier: Modifier) {
             )
         }
     }
+}
+
+/** Arc's "^": opens the actions sheet; long-press shares the page. */
+@Composable
+private fun ArcChevron(tab: BrowserTab) {
+    val c = Ios.c
+    var pressed by remember { mutableStateOf(false) }
+    val glow by animateFloatAsState(if (pressed) 1f else 0f, Motion.smooth, label = "chevGlow")
+    Box(
+        Modifier.size(48.dp)
+            .pressable(scaleTo = 0.84f, onLongClick = { if (!tab.isStartPage) Browser.share(tab.url, tab.title) }, onPressedChange = { pressed = it }) {
+                Browser.showActions = true
+            }
+            .clip(CircleShape).background(c.fill.copy(alpha = c.fill.alpha * 2.2f * glow)),
+        contentAlignment = Alignment.Center
+    ) { Icon(Icons.Outlined.KeyboardArrowUp, "Actions", tint = c.label, modifier = Modifier.size(28.dp)) }
 }
 
 @Composable
@@ -305,7 +323,7 @@ fun ArcActionsSheet(visible: Boolean) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         BigAction(Icons.Outlined.ChromeReaderMode, "Reader", Modifier.weight(1f)) { act { Browser.openReader() } }
                         BigAction(Icons.Outlined.Search, "Find", Modifier.weight(1f)) { act { Browser.startFind() } }
-                        BigAction(Icons.Outlined.ContentCopy, "Copy", Modifier.weight(1f)) { act { Browser.copy(t.url) } }
+                        BigAction(Icons.Outlined.ContentCopy, "Copy Link", Modifier.weight(1f)) { act { Browser.copy(t.url) } }
                         BigAction(Icons.Outlined.IosShare, "Share", Modifier.weight(1f)) { act { Browser.share(t.url, t.title) } }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -333,6 +351,7 @@ fun ArcActionsSheet(visible: Boolean) {
                     if (!t.isStartPage) {
                         MenuItem(Icons.Outlined.BookmarkAdd, "Add Bookmark") { act { Browser.addBookmark() } }
                         MenuItem(Icons.Outlined.AddBox, "Add to Reading List") { act { Browser.addReadingList() } }
+                        MenuItem(Icons.AutoMirrored.Outlined.OpenInNew, "Open in App…") { act { Browser.activity?.let { com.gr4nt.browser.browser.AppLinks.openWith(it, t.url) } } }
                         MenuItem(Icons.Outlined.Movie, "Media on This Page", trailing = if (t.media.isEmpty()) "None" else "${t.media.size}") { act { Browser.showMedia = true } }
                     }
                     MenuItem(Icons.Outlined.Download, "Downloads",

@@ -372,6 +372,16 @@ fun SettingsSheet(visible: Boolean) {
                         }
                     }
                 }
+                var appsOpen by remember { mutableStateOf(false) }
+                val appLabels = listOf("Ask", "Always", "Never")
+                Box {
+                    IosRow("Open Links in Apps", value = appLabels[s.openInApps.coerceIn(0, 2)], showChevron = true) { appsOpen = true }
+                    DropdownMenu(appsOpen, { appsOpen = false }) {
+                        appLabels.forEachIndexed { i, l ->
+                            DropdownMenuItem({ Text(l + if (i == s.openInApps) "  ✓" else "") }, { s.openInApps = i; s.save(); appsOpen = false })
+                        }
+                    }
+                }
                 IosRow("Downloads", showChevron = true, divider = false) { Browser.showSettings = false; Browser.showDownloads = true }
             }
             IosGroup("Layout", footer = "Arc: tabs · address · ^ actions, like Arc Search. Compact, Bottom and Top are Safari-style layouts.") {
@@ -383,7 +393,7 @@ fun SettingsSheet(visible: Boolean) {
                     ) { s.layout = l; s.save() }
                 }
             }
-            IosGroup(footer = "On tablets, Chromebooks and desktop windows iBrowser uses the Safari for Mac toolbar with a tab bar at the top.") {
+            IosGroup(footer = "On tablets, Chromebooks and desktop windows iBrowser uses the Arc desktop layout: a sidebar with your tabs and Favorites, and the page in a card beside it.") {
                 IosRow("Desktop Layout on Large Screens", divider = false, trailing = { IosSwitch(s.desktopLayout) { s.desktopLayout = it; s.save() } })
             }
             ToolbarAppearanceGroup()

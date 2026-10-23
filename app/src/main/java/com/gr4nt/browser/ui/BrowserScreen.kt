@@ -104,7 +104,7 @@ fun BrowserApp() {
     // tablets / desktops get the Safari-for-Mac chrome at the top instead of the phone layouts
     val desktop = isLargeScreen()
     val topBarH = when {
-        desktop -> DESKTOP_BAR_H + if (stripTabs().size > 1) DESKTOP_TABS_H else 0.dp
+        desktop -> 0.dp
         layout == ToolbarLayout.TOP && !Browser.toolbarHidden -> if (Browser.toolbarCollapsed) 34.dp else 64.dp
         else -> 0.dp
     }
@@ -132,9 +132,23 @@ fun BrowserApp() {
     ) {
         // status-bar tint (uses the site's theme-color like Safari)
         val statusColor = tab?.themeColor?.let { Color(it) } ?: c.background
-        if (tab?.isStartPage != true) Box(Modifier.fillMaxWidth().height(statusTop).background(statusColor))
+        if (tab?.isStartPage != true && !desktop) Box(Modifier.fillMaxWidth().height(statusTop).background(statusColor))
 
-        if (tab != null) {
+        if (tab != null && desktop) {
+            // Arc desktop: the page is a rounded card next to the sidebar
+            val sideOpen = ArcDesktop.sidebarOpen
+            val startPad by androidx.compose.animation.core.animateDpAsState(
+                if (sideOpen) ARC_SIDEBAR_W + ARC_GAP * 2 else ARC_GAP, spring(dampingRatio = 0.86f, stiffness = 380f), label = "cardStart"
+            )
+            Box(
+                Modifier.fillMaxSize()
+                    .padding(start = startPad, top = statusTop + ARC_GAP, end = ARC_GAP, bottom = navBottom + ARC_GAP)
+                    .arcPageCard()
+            ) {
+                WebContent(tab)
+                if (tab.isStartPage) Box(Modifier.fillMaxSize()) { StartPage(tab, inSheet = false) }
+            }
+        } else if (tab != null) {
             Box(Modifier.fillMaxSize().padding(top = statusTop + topBarH, bottom = bottomInset)) {
                 WebContent(tab)
             }
@@ -172,8 +186,16 @@ fun BrowserApp() {
         val topBackdrop by rememberBackdropColor({ topBounds }, SampleSide.BELOW, sampling && (desktop || layout == ToolbarLayout.TOP))
 
         if (tab != null && desktop) {
-            Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().onGloballyPositioned { topBounds = it.boundsInWindow() }) {
-                AdaptiveGlass(topBackdrop) { DesktopToolbar(tab) }
+            androidx.compose.animation.AnimatedVisibility(
+                ArcDesktop.sidebarOpen,
+                Modifier.align(Alignment.TopStart).statusBarsPadding().navigationBarsPadding().padding(ARC_GAP),
+                enter = androidx.compose.animation.slideInHorizontally(spring(dampingRatio = 0.86f, stiffness = 380f)) { -it } + fadeIn(),
+                exit = androidx.compose.animation.slideOutHorizontally(spring(dampingRatio = 1f, stiffness = 420f)) { -it } + fadeOut()
+            ) {
+                AdaptiveGlass(null) { ArcSidebar(tab) }
+            }
+            if (!ArcDesktop.sidebarOpen) {
+                ArcSidebarToggle(Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 18.dp, bottom = 18.dp))
             }
         } else if (tab != null && !Browser.findMode) {
             when (layout) {
@@ -243,6 +265,7 @@ fun BrowserApp() {
             val liftAnim by androidx.compose.animation.core.animateDpAsState(lift, androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 380f), label = "miniLift")
             MiniPlayer(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = liftAnim))
         }
+        AppPromptBanner(com.gr4nt.browser.browser.AppLinks.prompt, Modifier.align(Alignment.TopCenter))
         Browser.pendingDownload?.let { DownloadDialog(it) }
         PermissionPromptOverlay(com.gr4nt.browser.browser.SitePermissions.prompt)
         FullscreenOverlay()

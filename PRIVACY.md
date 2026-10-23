@@ -32,6 +32,8 @@ You can delete this information at any time in **Settings › Clear History and 
 | Downloads & media | Files and video streams are downloaded directly from the server that hosts them, using the website's cookies when needed so the download works. |
 | Translate & image search | Only when you choose "Translate Page", the page address is opened in Google Translate. Only when you choose "Search Image with Google Lens", the image address is sent to Google Lens. |
 
+To offer "Open in App" for links, iBrowser checks on your phone which installed apps can open web links (for example YouTube or Maps). That list stays on your device.
+
 Pinch to Summarize, Reader view, ad blocking and media detection all run on your phone — page content is not sent anywhere for these features.
 
 ## 3. Permissions and why they're used

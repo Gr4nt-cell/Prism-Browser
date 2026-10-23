@@ -482,7 +482,9 @@ object Browser {
                 val scheme = request.url.scheme?.lowercase() ?: return false
                 if (scheme == "http" || scheme == "https" || scheme == "about" || scheme == "data" || scheme == "javascript" ||
                     scheme == "file" || scheme == "content") {
-                    // Treat direct stream manifests as downloads
+                    // a tapped link that an installed app handles (YouTube, Maps, …) → open it there, or offer to
+                    if ((scheme == "http" || scheme == "https") && request.isForMainFrame && request.hasGesture() && !request.isRedirect &&
+                        AppLinks.onLinkTap(view.context, t.pageUrl, url, t.isPrivate)) return true
                     return false
                 }
                 return openExternal(url, view)

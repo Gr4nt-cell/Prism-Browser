@@ -21,7 +21,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build signed release APK and AAB
+      - name: Build release APK and AAB (unsigned)
         shell: bash
         run: |
           chmod +x gradlew
@@ -43,35 +43,20 @@ jobs:
           git commit -m "Build log for ${{ github.sha }}"
           git push -f origin build-logs
 
-      - name: Collect and verify signatures
+      - name: Collect unsigned outputs and signing tools
         shell: bash
         run: |
-          mkdir -p out
-          cp app/build/outputs/apk/release/app-release.apk out/iBrowser.apk
-          cp app/build/outputs/bundle/release/app-release.aab out/iBrowser.aab
-          # the AAB is self-signed with app/ibrowser.jks (same key as the APK)
-          jarsigner -verify out/iBrowser.aab | tail -1
-          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs out/iBrowser.apk | head -3 || true
-          ls -la out
+          mkdir -p out/tools/lib64
+          cp app/build/outputs/apk/release/app-release-unsigned.apk out/iBrowser-unsigned.apk
+          cp app/build/outputs/bundle/release/app-release.aab out/iBrowser-unsigned.aab
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          echo "build-tools: $BT"
+          cp "$BT/lib/apksigner.jar" out/tools/
+          cp "$BT/zipalign" out/tools/
+          cp "$BT"/lib64/libc++.so out/tools/lib64/ 2>/dev/null || true
+          ls -laR out
 
       - uses: actions/upload-artifact@v4
         with:
-          name: iBrowser-apk-aab
-          path: |
-            out/iBrowser.apk
-            out/iBrowser.aab
-
-      - name: Publish to "latest" release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: iBrowser (latest build)
-          body: |
-            Automatic build from commit ${{ github.sha }}.
-            - **iBrowser.apk** — install directly on your Android phone.
-            - **iBrowser.aab** — Android App Bundle, self-signed with the iBrowser key (for Play Console upload or bundletool).
-          prerelease: false
-          make_latest: true
-          files: |
-            out/iBrowser.apk
-            out/iBrowser.aab
+          name: iBrowser-unsigned
+          path: out/

@@ -3,8 +3,6 @@
     <string name="app_name">iBrowser</string>
     <style name="Theme.IBrowser" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@android:color/white</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
     <color name="ic_bg_top">#3FA8FF</color>
 </resources>

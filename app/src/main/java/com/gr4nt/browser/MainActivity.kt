@@ -251,6 +251,10 @@ class MainActivity : ComponentActivity() {
 
     /** null = follow the sensor, true = landscape, false = portrait. */
     fun lockOrientation(landscape: Boolean?) {
+        // tablets, foldables and desktop windows are never locked (Android 16 ignores it there anyway)
+        if (resources.configuration.smallestScreenWidthDp >= 600) {
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED; return
+        }
         requestedOrientation = when (landscape) {
             true -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
             false -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT

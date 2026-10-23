@@ -101,8 +101,14 @@ fun BrowserApp() {
     val c = Ios.c
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val topBarH = if (layout == ToolbarLayout.TOP && !Browser.toolbarHidden) (if (Browser.toolbarCollapsed) 34.dp else 64.dp) else 0.dp
-    val bottomInset = when (layout) {
+    // tablets / desktops get the Safari-for-Mac chrome at the top instead of the phone layouts
+    val desktop = isLargeScreen()
+    val topBarH = when {
+        desktop -> DESKTOP_BAR_H + if (stripTabs().size > 1) DESKTOP_TABS_H else 0.dp
+        layout == ToolbarLayout.TOP && !Browser.toolbarHidden -> if (Browser.toolbarCollapsed) 34.dp else 64.dp
+        else -> 0.dp
+    }
+    val bottomInset = if (desktop) navBottom else when (layout) {
         ToolbarLayout.ARC, ToolbarLayout.COMPACT -> navBottom
         ToolbarLayout.BOTTOM -> navBottom
         ToolbarLayout.TOP -> navBottom + if (Browser.toolbarCollapsed || Browser.toolbarHidden) 0.dp else 56.dp
@@ -149,7 +155,7 @@ fun BrowserApp() {
         val bottomBackdrop by rememberBackdropColor({ bottomBounds }, SampleSide.ABOVE, sampling)
 
         // ---- Auto-hide: the toolbar slides away after a few seconds without any touch ----
-        val canAutoHide = sampling && Store.settings.autoHideToolbar && !Browser.findMode && Browser.contextTarget == null
+        val canAutoHide = !desktop && sampling && Store.settings.autoHideToolbar && !Browser.findMode && Browser.contextTarget == null
         LaunchedEffect(Browser.lastTouchAt, canAutoHide, Store.settings.autoHideSeconds) {
             if (!canAutoHide) { Browser.idleHidden = false; return@LaunchedEffect }
             kotlinx.coroutines.delay(Store.settings.autoHideSeconds * 1000L)
@@ -163,9 +169,13 @@ fun BrowserApp() {
         )
         val hideBottom = Modifier.graphicsLayer { translationY = idle * 120.dp.toPx(); alpha = 1f - idle; scaleX = 1f - idle * 0.06f; scaleY = 1f - idle * 0.06f }
         val hideTop = Modifier.graphicsLayer { translationY = -idle * 100.dp.toPx(); alpha = 1f - idle }
-        val topBackdrop by rememberBackdropColor({ topBounds }, SampleSide.BELOW, sampling && layout == ToolbarLayout.TOP)
+        val topBackdrop by rememberBackdropColor({ topBounds }, SampleSide.BELOW, sampling && (desktop || layout == ToolbarLayout.TOP))
 
-        if (tab != null && !Browser.findMode) {
+        if (tab != null && desktop) {
+            Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().onGloballyPositioned { topBounds = it.boundsInWindow() }) {
+                AdaptiveGlass(topBackdrop) { DesktopToolbar(tab) }
+            }
+        } else if (tab != null && !Browser.findMode) {
             when (layout) {
                 ToolbarLayout.ARC -> Box(
                     Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 6.dp)
@@ -223,6 +233,7 @@ fun BrowserApp() {
         if (!Browser.showTabs && !Browser.editing) {
             val lift = when {
                 Browser.findMode -> 64.dp
+                desktop -> 16.dp
                 Browser.idleHidden -> 12.dp
                 Browser.toolbarCollapsed || Browser.toolbarHidden -> 46.dp
                 layout == ToolbarLayout.BOTTOM -> 128.dp

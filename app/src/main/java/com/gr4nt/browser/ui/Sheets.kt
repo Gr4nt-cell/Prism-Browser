@@ -383,6 +383,9 @@ fun SettingsSheet(visible: Boolean) {
                     ) { s.layout = l; s.save() }
                 }
             }
+            IosGroup(footer = "On tablets, Chromebooks and desktop windows iBrowser uses the Safari for Mac toolbar with a tab bar at the top.") {
+                IosRow("Desktop Layout on Large Screens", divider = false, trailing = { IosSwitch(s.desktopLayout) { s.desktopLayout = it; s.save() } })
+            }
             ToolbarAppearanceGroup()
             IosGroup("Tabs", footer = "Closed tabs and tabs you haven't opened for a while move to the Archive (in the tab switcher). Pinch a page inward to get a quick summary.") {
                 var archiveOpen by remember { mutableStateOf(false) }

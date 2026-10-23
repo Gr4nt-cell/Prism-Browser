@@ -60,3 +60,18 @@ jobs:
         with:
           name: iBrowser-unsigned
           path: out/
+
+      - name: Publish unsigned build for signing
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: unsigned
+          name: iBrowser (unsigned, for signing)
+          body: Unsigned R8 build from commit ${{ github.sha }} plus apksigner/zipalign. The signed files are published to the "latest" release.
+          prerelease: true
+          make_latest: false
+          files: |
+            out/iBrowser-unsigned.apk
+            out/iBrowser-unsigned.aab
+            out/tools/apksigner.jar
+            out/tools/zipalign
+            out/tools/lib64/libc++.so

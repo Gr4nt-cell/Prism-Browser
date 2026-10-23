@@ -130,10 +130,28 @@ class MainActivity : ComponentActivity() {
     private val notifPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
     private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
+    companion object {
+        /** Tell Android which theme the app uses (Android 12+), so WebView pages and system UI follow it too. */
+        fun applyAppearance(ctx: android.content.Context, appearance: Int) {
+            if (Build.VERSION.SDK_INT < 31) return
+            val ui = ctx.getSystemService(android.app.UiModeManager::class.java) ?: return
+            runCatching {
+                ui.setApplicationNightMode(
+                    when (appearance) {
+                        1 -> android.app.UiModeManager.MODE_NIGHT_NO
+                        2 -> android.app.UiModeManager.MODE_NIGHT_YES
+                        else -> android.app.UiModeManager.MODE_NIGHT_AUTO
+                    }
+                )
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         Browser.attach(this)
+        applyAppearance(this, com.gr4nt.browser.data.Store.settings.appearance)
         Browser.restore()
         Browser.requestFileChooser = {
             val launch = {

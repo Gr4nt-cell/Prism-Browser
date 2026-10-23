@@ -133,8 +133,8 @@ fun AdaptiveGlass(backdrop: Color?, content: @Composable () -> Unit) {
             glass = frosted.copy(alpha = (baseAlpha + (if (darkGlass) 0.02f else 0f) + onWhite * 0.40f * (1f - baseAlpha)).coerceAtMost(0.97f)),
             liquid = st.barLiquidGlass,
             glassStrong = frosted.copy(alpha = 0.88f + onWhite * 0.06f),
-            glassBorder = Color.Black.copy(alpha = if (darkGlass) 0.25f else 0.14f + onWhite * 0.12f),
-            glassShadow = 1f + onWhite * 0.9f,
+            glassBorder = if (darkGlass) Color.White.copy(alpha = 0.30f) else Color.Black.copy(alpha = 0.20f + onWhite * 0.14f),
+            glassShadow = 1.15f + onWhite * 0.9f,
             // keep the theme's own tint colour for links/buttons
             tint = if (darkGlass) DarkIos.tint else LightIos.tint
         )

@@ -384,6 +384,13 @@ fun SettingsSheet(visible: Boolean) {
                 }
                 IosRow("Downloads", showChevron = true, divider = false) { Browser.showSettings = false; Browser.showDownloads = true }
             }
+            IosGroup("Appearance", footer = "Automatic follows your phone's dark mode setting.") {
+                listOf("Automatic", "Light", "Dark").forEachIndexed { i, l ->
+                    IosRow(l, divider = i < 2, trailing = { if (s.appearance == i) Text("✓", color = c.tint, style = Ios.headline) }) {
+                        s.appearance = i; s.save(); com.gr4nt.browser.MainActivity.applyAppearance(ctx, i)
+                    }
+                }
+            }
             IosGroup("Layout", footer = "Arc: tabs · address · ^ actions, like Arc Search. Compact, Bottom and Top are Safari-style layouts.") {
                 ToolbarLayout.entries.forEachIndexed { i, l ->
                     IosRow(

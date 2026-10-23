@@ -37,7 +37,7 @@ data class IosColors(
     val glassShadow: Float = 1f,                 // shadow strength multiplier for glass
     val liquid: Boolean = true,                  // false = plain frosted bar (no sheen, rim or glow)
     val wall: Color = Color(0xFFFFFFFF),
-    val cardBorder: Color = Color(0x14000000)     // hairline that keeps white cards visible on white
+    val cardBorder: Color = Color(0x24000000)     // hairline that keeps white cards visible on white
 )
 
 val LightIos = IosColors(
@@ -56,7 +56,7 @@ val LightIos = IosColors(
     orange = Color(0xFFFF9500),
     glass = Color(0x8CFFFFFF),
     glassStrong = Color(0xE6FFFFFF),
-    glassBorder = Color(0x1F000000),
+    glassBorder = Color(0x33000000),
     glassHighlight = Color(0xCCFFFFFF),
     scrim = Color(0x26000000)
 )
@@ -77,11 +77,11 @@ val DarkIos = IosColors(
     orange = Color(0xFFFF9F0A),
     glass = Color(0x8C2C2C2E),
     glassStrong = Color(0xE62C2C2E),
-    glassBorder = Color(0x40FFFFFF),
+    glassBorder = Color(0x52FFFFFF),
     glassHighlight = Color(0x33FFFFFF),
     scrim = Color(0x66000000),
-    wall = Color(0xFF000000),
-    cardBorder = Color(0x26FFFFFF)
+    wall = Color(0xFF0F0F11),
+    cardBorder = Color(0x33FFFFFF)
 )
 
 val LocalIos = staticCompositionLocalOf { LightIos }
@@ -101,7 +101,21 @@ object Ios {
 
 @Composable
 fun IBrowserTheme(content: @Composable () -> Unit) {
-    val dark = isSystemInDarkTheme()
+    // Settings › Appearance: 0 = follow the system, 1 = always light, 2 = always dark
+    val dark = when (com.gr4nt.browser.data.Store.settings.appearance) {
+        1 -> false
+        2 -> true
+        else -> isSystemInDarkTheme()
+    }
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.SideEffect {
+        (view.context as? android.app.Activity)?.window?.let { w ->
+            androidx.core.view.WindowCompat.getInsetsController(w, view).apply {
+                isAppearanceLightStatusBars = !dark
+                isAppearanceLightNavigationBars = !dark
+            }
+        }
+    }
     val ios = if (dark) DarkIos else LightIos
     val scheme = if (dark) darkColorScheme(primary = ios.tint, background = ios.background, surface = ios.card)
     else lightColorScheme(primary = ios.tint, background = ios.background, surface = ios.card)

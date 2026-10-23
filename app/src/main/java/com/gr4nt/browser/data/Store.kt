@@ -83,6 +83,8 @@ class Settings(private val p: SharedPreferences) {
     var desktopLayout by mutableStateOf(p.getBoolean("desktopLayout", true))
     /** Open links in installed apps: 0 Ask, 1 Always, 2 Never (see AppLinks). */
     var openInApps by mutableStateOf(p.getInt("openInApps", 0))
+    /** 0 = follow system, 1 = light, 2 = dark. */
+    var appearance by mutableStateOf(p.getInt("appearance", 0))
     var lastFilterUpdate by mutableStateOf(p.getLong("filterUpdate", 0L))
     var totalBlocked by mutableStateOf(p.getLong("totalBlocked", 0L))
     // default page text size is 90%; existing installs are moved to 90% once
@@ -111,6 +113,7 @@ class Settings(private val p: SharedPreferences) {
             .putBoolean("autoHide", autoHideToolbar)
             .putBoolean("desktopLayout", desktopLayout)
             .putInt("openInApps", openInApps)
+            .putInt("appearance", appearance)
             .putInt("autoHideSec", autoHideSeconds)
             .putInt("maxParallel", maxParallel)
             .putBoolean("askDl", askBeforeDownload)

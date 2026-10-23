@@ -94,12 +94,13 @@ fun Modifier.wallpaper(): Modifier {
 fun Modifier.glassCard(shape: Shape): Modifier {
     val c = Ios.c
     return this
-        .shadow(14.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.45f else 0.10f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.55f else 0.16f))
-        .shadow(2.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.3f else 0.06f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.35f else 0.10f))
+        .shadow(18.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.6f else 0.14f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.7f else 0.24f))
+        // tight contact shadow: gives every card a crisp, visible edge
+        .shadow(3.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.5f else 0.12f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.6f else 0.20f))
         .clip(shape)
         .background(c.card)
         .background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (c.dark) 0.05f else 0.35f), 0.4f to Color.White.copy(alpha = 0f)))
-        .border(0.8.dp, c.cardBorder, shape)
+        .border(1.dp, c.cardBorder, shape)
 }
 
 /** Shared spring specs so motion feels consistent everywhere. */
@@ -124,20 +125,25 @@ fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp,
     if (!c.liquid) {
         // plain frosted bar: flat translucent fill, even hairline, softer shadow — no sheen, rim or refraction tint
         return this
-            .shadow(elevation * 0.6f, shape, clip = false,
-                ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.35f else 0.14f) * c.glassShadow).coerceAtMost(1f)),
-                spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.45f else 0.22f) * c.glassShadow).coerceAtMost(1f)))
+            .shadow(elevation * 0.7f, shape, clip = false,
+                ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.5f else 0.18f) * c.glassShadow).coerceAtMost(1f)),
+                spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.6f else 0.30f) * c.glassShadow).coerceAtMost(1f)))
+            .shadow(3.dp, shape, clip = false,
+                ambientColor = Color.Black.copy(alpha = if (c.dark) 0.5f else 0.12f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.6f else 0.22f))
             .clip(shape)
             .background(if (strong) c.glassStrong else c.glass)
             .background(Color.White.copy(alpha = glow * if (c.dark) 0.10f else 0.22f))
-            .border(0.7.dp, if (c.dark) Color.White.copy(alpha = 0.16f) else c.glassBorder, shape)
+            .border(1.dp, if (c.dark) Color.White.copy(alpha = 0.24f) else c.glassBorder, shape)
     }
     return this
         .shadow(
             elevation, shape, clip = false,
-            ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.40f else 0.16f) * c.glassShadow).coerceAtMost(1f)),
-            spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.55f else 0.28f) * c.glassShadow).coerceAtMost(1f))
+            ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.55f else 0.20f) * c.glassShadow).coerceAtMost(1f)),
+            spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.70f else 0.34f) * c.glassShadow).coerceAtMost(1f))
         )
+        // tight contact shadow right at the edge, so the glass outline reads on any background
+        .shadow(3.dp, shape, clip = false,
+            ambientColor = Color.Black.copy(alpha = if (c.dark) 0.5f else 0.14f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.6f else 0.24f))
         .clip(shape)
         .background(if (strong) c.glassStrong else c.glass)
         // soft specular sheen
@@ -158,12 +164,12 @@ fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp,
         // press glow
         .background(Color.White.copy(alpha = glow * if (c.dark) 0.14f else 0.30f))
         .border(
-            1.dp,
+            1.2.dp,
             // crisp edge: bright top rim, defined lower outline so the glass reads on any page
             Brush.verticalGradient(
-                0f to Color.White.copy(alpha = if (c.dark) 0.48f else 1f),
-                0.5f to Color.White.copy(alpha = if (c.dark) 0.14f else 0.45f),
-                1f to (if (c.dark) Color.White.copy(alpha = 0.24f) else c.glassBorder)
+                0f to Color.White.copy(alpha = if (c.dark) 0.55f else 1f),
+                0.5f to (if (c.dark) Color.White.copy(alpha = 0.20f) else Color.Black.copy(alpha = 0.10f)),
+                1f to (if (c.dark) Color.White.copy(alpha = 0.32f) else c.glassBorder)
             ),
             shape
         )

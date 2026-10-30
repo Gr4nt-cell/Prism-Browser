@@ -56,7 +56,7 @@ val LightIos = IosColors(
     orange = Color(0xFFFF9500),
     glass = Color(0x8CFFFFFF),
     glassStrong = Color(0xE6FFFFFF),
-    glassBorder = Color(0x33000000),
+    glassBorder = Color(0x2A52677A),
     glassHighlight = Color(0xCCFFFFFF),
     scrim = Color(0x26000000)
 )
@@ -77,11 +77,11 @@ val DarkIos = IosColors(
     orange = Color(0xFFFF9F0A),
     glass = Color(0x8C2C2C2E),
     glassStrong = Color(0xE62C2C2E),
-    glassBorder = Color(0x52FFFFFF),
+    glassBorder = Color(0x40FFFFFF),
     glassHighlight = Color(0x33FFFFFF),
     scrim = Color(0x66000000),
     wall = Color(0xFF0F0F11),
-    cardBorder = Color(0x33FFFFFF)
+    cardBorder = Color(0x2AFFFFFF)
 )
 
 val LocalIos = staticCompositionLocalOf { LightIos }

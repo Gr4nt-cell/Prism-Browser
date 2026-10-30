@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -33,6 +34,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,45 +55,73 @@ fun topSites(limit: Int = 8): List<Site> =
     (Store.favorites.items + Store.frequentlyVisited(limit)).distinctBy { hostOf(it.url).removePrefix("www.") }.take(limit)
 
 /**
- * Arc Search new tab: nothing but your Top Sites as round icons; the search field is the bar
- * at the bottom (the keyboard opens straight away on a new tab).
+ * Arc Search-style new tab with quick access favorites, soft glass surfaces, and the bottom search bar.
  */
 @Composable
 fun ArcHome(tab: BrowserTab?) {
     val c = Ios.c
     val sites = topSites()
-    Column(
-        Modifier.fillMaxSize().wallpaper().statusBarsPadding().padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(Modifier.weight(1f))
-        if (tab?.isPrivate == true) {
-            Icon(Icons.Outlined.VisibilityOff, null, tint = c.secondary, modifier = Modifier.size(34.dp))
-            Spacer(Modifier.height(8.dp))
-            Text("Private Tab", style = Ios.title3, color = c.label)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Pages you visit here aren't saved to your history or Archive.",
-                style = Ios.footnote, color = c.secondary, textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(28.dp))
-        }
-        if (sites.isNotEmpty()) {
-            Text("Top Sites", style = Ios.footnote.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.4.sp), color = c.secondary)
-            Spacer(Modifier.height(14.dp))
-            Column(Modifier.widthIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                sites.chunked(4).forEach { row ->
-                    Row(Modifier.fillMaxWidth()) {
-                        row.forEach { s -> TopSite(s, Modifier.weight(1f)) }
-                        repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+    Box(Modifier.fillMaxSize().wallpaper()) {
+        Box(
+            Modifier.align(Alignment.TopEnd).offset(x = 112.dp, y = 72.dp).size(290.dp)
+                .background(
+                    Brush.radialGradient(
+                        listOf(
+                            if (c.dark) Color(0xFF8FAEFF).copy(alpha = 0.08f) else Color(0xFF9CBFFF).copy(alpha = 0.34f),
+                            Color.Transparent
+                        )
+                    ),
+                    CircleShape
+                )
+        )
+        Box(
+            Modifier.align(Alignment.BottomStart).offset(x = (-118).dp, y = 24.dp).size(270.dp)
+                .background(
+                    Brush.radialGradient(
+                        listOf(
+                            if (c.dark) Color(0xFFB79CFF).copy(alpha = 0.06f) else Color(0xFFE6C8F2).copy(alpha = 0.22f),
+                            Color.Transparent
+                        )
+                    ),
+                    CircleShape
+                )
+        )
+        Column(
+            Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.height(38.dp))
+            if (tab?.isPrivate == true) {
+                Icon(Icons.Outlined.VisibilityOff, null, tint = c.secondary, modifier = Modifier.size(34.dp))
+                Spacer(Modifier.height(8.dp))
+                Text("Private Tab", style = Ios.title3, color = c.label)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Pages you visit here aren't saved to your history or Archive.",
+                    style = Ios.footnote, color = c.secondary, textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(28.dp))
+            }
+            if (sites.isNotEmpty()) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Favorites", style = Ios.headline, color = c.label, modifier = Modifier.weight(1f))
+                    Text("Top sites", style = Ios.caption, color = c.tertiary)
+                }
+                Spacer(Modifier.height(14.dp))
+                Column(Modifier.widthIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    sites.chunked(4).forEach { row ->
+                        Row(Modifier.fillMaxWidth()) {
+                            row.forEach { s -> TopSite(s, Modifier.weight(1f)) }
+                            repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
                     }
                 }
+            } else {
+                Text("Search or enter a URL below", style = Ios.subhead, color = c.secondary)
             }
-        } else {
-            Text("Search or type a URL below", style = Ios.subhead, color = c.secondary)
+            Spacer(Modifier.weight(1.4f))
+            Spacer(Modifier.height(90.dp))
         }
-        Spacer(Modifier.weight(1.4f))
-        Spacer(Modifier.height(90.dp))
     }
 }
 
@@ -102,8 +133,8 @@ private fun TopSite(s: Site, modifier: Modifier) {
         modifier.pressable(scaleTo = 0.88f, onLongClick = { if (pinned) Store.favorites.remove(s.url) }) { Browser.load(s.url) },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(Modifier.size(58.dp).glassCard(CircleShape), contentAlignment = Alignment.Center) {
-            SiteTile(s.url, s.title, size = 34.dp, corner = 17.dp)
+        Box(Modifier.size(64.dp).glassCard(CircleShape), contentAlignment = Alignment.Center) {
+            SiteTile(s.url, s.title, size = 38.dp, corner = 19.dp)
         }
         Spacer(Modifier.height(6.dp))
         Text(

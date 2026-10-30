@@ -164,7 +164,7 @@ fun AddressEntry(visible: Boolean) {
                             keyboardActions = KeyboardActions(onGo = { if (tf.text.isNotBlank()) Browser.load(tf.text) }),
                             modifier = Modifier.weight(1f).focusRequester(focus),
                             decorationBox = { inner ->
-                                Box { if (tf.text.isEmpty()) Text("Search or enter website name", style = Ios.body, color = c.secondary); inner() }
+                                Box { if (tf.text.isEmpty()) Text("Search or enter a URL", style = Ios.body, color = c.secondary); inner() }
                             }
                         )
                         if (tf.text.isNotEmpty()) {

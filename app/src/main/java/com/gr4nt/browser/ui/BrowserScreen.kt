@@ -341,7 +341,7 @@ fun AddressPill(tab: BrowserTab, modifier: Modifier = Modifier, height: Int = 48
                     Spacer(Modifier.width(4.dp))
                 }
                 Text(
-                    if (tab.isStartPage) "Search or enter website name" else tab.host.ifBlank { tab.url },
+                    if (tab.isStartPage) "Search or enter a URL" else tab.host.ifBlank { tab.url },
                     style = Ios.callout.copy(fontWeight = if (tab.isStartPage) FontWeight.Normal else FontWeight.Medium),
                     color = if (tab.isStartPage) c.secondary else c.label,
                     maxLines = 1, overflow = TextOverflow.Ellipsis

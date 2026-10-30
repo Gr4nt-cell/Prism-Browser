@@ -87,20 +87,25 @@ fun Modifier.wallpaper(): Modifier {
 }
 
 /**
- * Card on the plain background: near-opaque fill, a faint hairline and a layered soft shadow
- * (wide ambient + tighter key shadow) so it lifts clearly off white.
+ * Translucent frosted card with a fine highlight rim and a restrained layered shadow.
  */
 @Composable
 fun Modifier.glassCard(shape: Shape): Modifier {
     val c = Ios.c
     return this
-        .shadow(18.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.6f else 0.14f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.7f else 0.24f))
-        // tight contact shadow: gives every card a crisp, visible edge
-        .shadow(3.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.5f else 0.12f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.6f else 0.20f))
+        .shadow(16.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.52f else 0.10f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.62f else 0.17f))
+        // Soft cool frost with a fine top sheen and a restrained contact shadow.
+        .shadow(2.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.42f else 0.07f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.52f else 0.12f))
         .clip(shape)
-        .background(c.card)
-        .background(Brush.verticalGradient(0f to Color.White.copy(alpha = if (c.dark) 0.05f else 0.35f), 0.4f to Color.White.copy(alpha = 0f)))
-        .border(1.dp, c.cardBorder, shape)
+        .background(if (c.dark) c.card.copy(alpha = 0.88f) else Color(0xEAF4F8FD))
+        .background(
+            Brush.verticalGradient(
+                0f to Color.White.copy(alpha = if (c.dark) 0.10f else 0.62f),
+                0.48f to Color(0xFFBDD5FA).copy(alpha = if (c.dark) 0.025f else 0.08f),
+                1f to Color.White.copy(alpha = 0.015f)
+            )
+        )
+        .border(1.dp, if (c.dark) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.84f), shape)
 }
 
 /** Shared spring specs so motion feels consistent everywhere. */
@@ -120,16 +125,16 @@ object Motion {
 @Composable
 fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp, glow: Float = 0f): Modifier {
     val c = Ios.c
-    val sheenTop = if (c.dark) 0.16f else 0.60f
-    val rim = if (c.dark) 0.10f else 0.35f
+    val sheenTop = if (c.dark) 0.12f else 0.42f
+    val rim = if (c.dark) 0.08f else 0.26f
     if (!c.liquid) {
         // plain frosted bar: flat translucent fill, even hairline, softer shadow — no sheen, rim or refraction tint
         return this
             .shadow(elevation * 0.7f, shape, clip = false,
-                ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.5f else 0.18f) * c.glassShadow).coerceAtMost(1f)),
-                spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.6f else 0.30f) * c.glassShadow).coerceAtMost(1f)))
-            .shadow(3.dp, shape, clip = false,
-                ambientColor = Color.Black.copy(alpha = if (c.dark) 0.5f else 0.12f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.6f else 0.22f))
+                ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.44f else 0.14f) * c.glassShadow).coerceAtMost(1f)),
+                spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.54f else 0.24f) * c.glassShadow).coerceAtMost(1f)))
+            .shadow(2.dp, shape, clip = false,
+                ambientColor = Color.Black.copy(alpha = if (c.dark) 0.42f else 0.08f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.52f else 0.16f))
             .clip(shape)
             .background(if (strong) c.glassStrong else c.glass)
             .background(Color.White.copy(alpha = glow * if (c.dark) 0.10f else 0.22f))
@@ -138,12 +143,12 @@ fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp,
     return this
         .shadow(
             elevation, shape, clip = false,
-            ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.55f else 0.20f) * c.glassShadow).coerceAtMost(1f)),
-            spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.70f else 0.34f) * c.glassShadow).coerceAtMost(1f))
+            ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.48f else 0.16f) * c.glassShadow).coerceAtMost(1f)),
+            spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.60f else 0.26f) * c.glassShadow).coerceAtMost(1f))
         )
         // tight contact shadow right at the edge, so the glass outline reads on any background
-        .shadow(3.dp, shape, clip = false,
-            ambientColor = Color.Black.copy(alpha = if (c.dark) 0.5f else 0.14f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.6f else 0.24f))
+        .shadow(2.dp, shape, clip = false,
+            ambientColor = Color.Black.copy(alpha = if (c.dark) 0.42f else 0.09f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.50f else 0.16f))
         .clip(shape)
         .background(if (strong) c.glassStrong else c.glass)
         // soft specular sheen
@@ -167,9 +172,9 @@ fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp,
             1.2.dp,
             // crisp edge: bright top rim, defined lower outline so the glass reads on any page
             Brush.verticalGradient(
-                0f to Color.White.copy(alpha = if (c.dark) 0.55f else 1f),
-                0.5f to (if (c.dark) Color.White.copy(alpha = 0.20f) else Color.Black.copy(alpha = 0.10f)),
-                1f to (if (c.dark) Color.White.copy(alpha = 0.32f) else c.glassBorder)
+                0f to Color.White.copy(alpha = if (c.dark) 0.44f else 0.90f),
+                0.5f to (if (c.dark) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.06f)),
+                1f to (if (c.dark) Color.White.copy(alpha = 0.22f) else c.glassBorder)
             ),
             shape
         )

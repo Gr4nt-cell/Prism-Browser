@@ -124,17 +124,17 @@ fun AdaptiveGlass(backdrop: Color?, content: @Composable () -> Unit) {
     // user's transparency: 0 = almost solid, 1 = almost clear (default 0.65 ≈ the original look)
     val baseAlpha = (0.92f - st.barTransparency * 0.80f).coerceIn(0.10f, 0.95f)
     val tint by animateColorAsState(target, tween(320), label = "glassTint")
-    val neutral by animateColorAsState(if (darkGlass) Color(0xFF202023) else Color(0xFFFAFAFC), tween(320), label = "glassNeutral")
+    val neutral by animateColorAsState(if (darkGlass) Color(0xFF20252D) else Color(0xFFF5F8FC), tween(320), label = "glassNeutral")
     val palette = (if (darkGlass) DarkIos else LightIos).let { p ->
         // keep the tint subtle: a hint of the colour behind, not a solid paint
         val mixed = lerp(neutral, tint, if (backdrop == null || !st.barAdaptiveTint) 0f else 0.42f)
-        val frosted = lerp(mixed, Color(0xFFEDEDF0), onWhite)       // neutral grey frost on white
+        val frosted = lerp(mixed, Color(0xFFEAF1F8), onWhite)       // cool neutral frost on white
         p.copy(
-            glass = frosted.copy(alpha = (baseAlpha + (if (darkGlass) 0.02f else 0f) + onWhite * 0.40f * (1f - baseAlpha)).coerceAtMost(0.97f)),
+            glass = frosted.copy(alpha = (baseAlpha + (if (darkGlass) 0.02f else 0f) + onWhite * 0.28f * (1f - baseAlpha)).coerceAtMost(0.93f)),
             liquid = st.barLiquidGlass,
-            glassStrong = frosted.copy(alpha = 0.88f + onWhite * 0.06f),
-            glassBorder = if (darkGlass) Color.White.copy(alpha = 0.30f) else Color.Black.copy(alpha = 0.20f + onWhite * 0.14f),
-            glassShadow = 1.15f + onWhite * 0.9f,
+            glassStrong = frosted.copy(alpha = 0.84f + onWhite * 0.06f),
+            glassBorder = if (darkGlass) Color.White.copy(alpha = 0.24f) else Color.Black.copy(alpha = 0.15f + onWhite * 0.09f),
+            glassShadow = 0.92f + onWhite * 0.42f,
             // keep the theme's own tint colour for links/buttons
             tint = if (darkGlass) DarkIos.tint else LightIos.tint
         )

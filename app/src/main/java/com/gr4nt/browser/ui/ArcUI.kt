@@ -205,7 +205,9 @@ private fun ArcCapsule(tab: BrowserTab, modifier: Modifier) {
     ) {
         Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             if (tab.isStartPage) {
-                Text("Search or type a URL", style = Ios.callout, color = c.secondary, maxLines = 1, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                Icon(Icons.Outlined.Search, null, tint = c.secondary, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Search or enter a URL", style = Ios.callout, color = c.secondary, maxLines = 1, modifier = Modifier.weight(1f), textAlign = TextAlign.Start)
             } else {
                 if (tab.isPrivate) { Icon(Icons.Outlined.VisibilityOff, null, tint = c.secondary, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(5.dp)) }
                 if (tab.secure) { Icon(Icons.Outlined.Lock, null, tint = c.secondary, modifier = Modifier.size(12.dp)); Spacer(Modifier.width(5.dp)) }
@@ -308,7 +310,7 @@ fun ArcActionsSheet(visible: Boolean) {
                     ) {
                         if (!t.isStartPage && t.secure) { Icon(Icons.Outlined.Lock, null, tint = c.secondary, modifier = Modifier.size(13.dp)); Spacer(Modifier.width(6.dp)) }
                         Text(
-                            if (t.isStartPage) "Search or type a URL" else t.url.removePrefix("https://").removePrefix("http://"),
+                            if (t.isStartPage) "Search or enter a URL" else t.url.removePrefix("https://").removePrefix("http://"),
                             style = Ios.subhead, color = if (t.isStartPage) c.secondary else c.label, maxLines = 1, overflow = TextOverflow.Ellipsis
                         )
                     }

@@ -138,8 +138,8 @@ fun TabsOverview(visible: Boolean) {
                     if (group.isEmpty()) {
                         EmptyDeck(private, q.isNotBlank())
                     } else {
-                        // cards stack like iOS Recents (the newest peeks in from the right, older ones pile up on the left)
-                        CardDeck(group, private, arc = false)
+                        // Arc uses Android-style recents cards; other layouts retain the iOS stack.
+                        CardDeck(group, private, arc = arc)
                     }
                 }
             }

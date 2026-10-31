@@ -14,6 +14,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore release signing keystore
+        shell: bash
+        env:
+          IBROWSER_KEYSTORE_BASE64: ${{ secrets.IBROWSER_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$IBROWSER_KEYSTORE_BASE64" ]]; then
+            echo "::error::Missing IBROWSER_KEYSTORE_BASE64 repository secret"
+            exit 1
+          fi
+          printf '%s' "$IBROWSER_KEYSTORE_BASE64" | base64 --decode > app/ibrowser.jks
+          test -s app/ibrowser.jks
+          chmod 600 app/ibrowser.jks
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -21,11 +34,20 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build release APK and AAB (unsigned)
+      - name: Build signed release APK and AAB
         shell: bash
+        env:
+          IBROWSER_KEYSTORE_PATH: ${{ github.workspace }}/app/ibrowser.jks
+          IBROWSER_KEYSTORE_PASSWORD: ${{ secrets.IBROWSER_KEYSTORE_PASSWORD }}
+          IBROWSER_KEY_ALIAS: ${{ secrets.IBROWSER_KEY_ALIAS }}
+          IBROWSER_KEY_PASSWORD: ${{ secrets.IBROWSER_KEY_PASSWORD }}
         run: |
+          set -euo pipefail
+          if [[ -z "$IBROWSER_KEYSTORE_PASSWORD" || -z "$IBROWSER_KEY_ALIAS" || -z "$IBROWSER_KEY_PASSWORD" ]]; then
+            echo "::error::One or more release signing secrets are missing"
+            exit 1
+          fi
           chmod +x gradlew
-          set -o pipefail
           ./gradlew --no-daemon assembleRelease bundleRelease 2>&1 | tee build.log
 
       - name: Report errors
@@ -43,35 +65,33 @@ jobs:
           git commit -m "Build log for ${{ github.sha }}"
           git push -f origin build-logs
 
-      - name: Collect unsigned outputs and signing tools
+      - name: Collect signed outputs
         shell: bash
         run: |
-          mkdir -p out/tools/lib64
-          cp app/build/outputs/apk/release/app-release-unsigned.apk out/iBrowser-unsigned.apk
-          cp app/build/outputs/bundle/release/app-release.aab out/iBrowser-unsigned.aab
+          set -euo pipefail
+          mkdir -p out
+          cp app/build/outputs/apk/release/app-release.apk out/iBrowser.apk
+          cp app/build/outputs/bundle/release/app-release.aab out/iBrowser.aab
+          sha256sum out/iBrowser.apk out/iBrowser.aab > out/SHA256SUMS
+
+      - name: Verify APK signature
+        shell: bash
+        run: |
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          echo "build-tools: $BT"
-          cp "$BT/lib/apksigner.jar" out/tools/
-          cp "$BT/zipalign" out/tools/
-          cp "$BT"/lib64/libc++.so out/tools/lib64/ 2>/dev/null || true
-          ls -laR out
+          "$BT/apksigner" verify --verbose out/iBrowser.apk
+          jarsigner -verify out/iBrowser.aab
 
       - uses: actions/upload-artifact@v4
         with:
-          name: iBrowser-unsigned
+          name: iBrowser-signed
           path: out/
 
-      - name: Publish unsigned build for signing
+      - name: Publish signed build
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: unsigned
-          name: iBrowser (unsigned, for signing)
-          body: Unsigned R8 build from commit ${{ github.sha }} plus apksigner/zipalign. The signed files are published to the "latest" release.
-          prerelease: true
-          make_latest: false
+          tag_name: latest
+          overwrite: true
+          fail_on_unmatched_files: true
           files: |
-            out/iBrowser-unsigned.apk
-            out/iBrowser-unsigned.aab
-            out/tools/apksigner.jar
-            out/tools/zipalign
-            out/tools/lib64/libc++.so
+            out/iBrowser.apk
+            out/iBrowser.aab

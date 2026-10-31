@@ -4,6 +4,13 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseStorePath = System.getenv("IBROWSER_KEYSTORE_PATH")
+val releaseStorePassword = System.getenv("IBROWSER_KEYSTORE_PASSWORD")
+val releaseKeyAlias = System.getenv("IBROWSER_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("IBROWSER_KEY_PASSWORD")
+val releaseSigningConfigured = listOf(releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
+    .all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.gr4nt.browser"
     compileSdk = 35
@@ -19,26 +26,29 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            storeFile = file("ibrowser.jks")
-            storePassword = "ibrowser123"
-            keyAlias = "ibrowser"
-            keyPassword = "ibrowser123"
+        if (releaseSigningConfigured) {
+            create("release") {
+                storeFile = file(releaseStorePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
         }
     }
 
     buildTypes {
         release {
+            if (releaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             // R8: shrink, optimise and obfuscate the release DEX (Play Console "DEX code optimisation")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // release outputs are left unsigned; they are zip-aligned and signed afterwards with
-            // apksigner (APK: v1+v2+v3) and jarsigner (AAB) using app/ibrowser.jks
+            // CI supplies signing inputs through IBROWSER_* environment variables.
+            // Local release builds without them remain unsigned.
         }
-        debug {
-            signingConfig = signingConfigs.getByName("release")
-        }
+        // Debug builds use Gradle’s generated debug key.
     }
 
     compileOptions {

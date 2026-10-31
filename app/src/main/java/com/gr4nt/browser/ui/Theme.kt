@@ -43,8 +43,8 @@ data class IosColors(
 val LightIos = IosColors(
     dark = false,
     background = Color(0xFFFFFFFF),
-    grouped = Color(0xFFFFFFFF),
-    card = Color(0xF7FFFFFF),
+    grouped = Color(0xFFF2F2F7),
+    card = Color(0xE6FFFFFF),
     fill = Color(0x1F767680),
     label = Color(0xFF000000),
     secondary = Color(0x993C3C43),
@@ -54,9 +54,9 @@ val LightIos = IosColors(
     red = Color(0xFFFF3B30),
     green = Color(0xFF34C759),
     orange = Color(0xFFFF9500),
-    glass = Color(0x8CFFFFFF),
+    glass = Color(0xB8FFFFFF),
     glassStrong = Color(0xE6FFFFFF),
-    glassBorder = Color(0x2A52677A),
+    glassBorder = Color(0xB8FFFFFF),
     glassHighlight = Color(0xCCFFFFFF),
     scrim = Color(0x26000000)
 )
@@ -64,7 +64,7 @@ val LightIos = IosColors(
 val DarkIos = IosColors(
     dark = true,
     background = Color(0xFF000000),
-    grouped = Color(0xFF000000),
+    grouped = Color(0xFF141416),
     card = Color(0xFF1C1C1E),
     fill = Color(0x3D767680),
     label = Color(0xFFFFFFFF),
@@ -88,7 +88,7 @@ val LocalIos = staticCompositionLocalOf { LightIos }
 
 object Ios {
     val c: IosColors @Composable get() = LocalIos.current
-    val title = TextStyle(fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp)
+    val title = TextStyle(fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp)
     val title3 = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
     val headline = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.4).sp)
     val body = TextStyle(fontSize = 17.sp, letterSpacing = (-0.4).sp)

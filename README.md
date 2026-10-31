@@ -5,11 +5,12 @@ An Android browser with a Safari (iOS 27) style interface, built natively with K
 **Download:** grab `iBrowser.apk` from the [latest release](../../releases/tag/latest). Every push to `main` rebuilds it with GitHub Actions.
 
 ## Interface
-- iOS 27 **compact** layout: floating Liquid-Glass back button, address pill with the Page menu on the left, and a Tabs button on the right. Bottom and Top layouts are available in Settings.
+- iOS 27 **compact** layout (default): floating Liquid-Glass back button, address pill with the Page menu on the left, and a Tabs button on the right. Bottom and Top layouts are available in Settings.
+- Tablets and wide windows use desktop Safari chrome: a top address toolbar, horizontal tab strip and an optional library sidebar.
 - Toolbar shrinks to a small domain pill while scrolling; swipe the address bar left/right to switch tabs, up to open the tab overview.
 - New **Start page** with Start / Bookmarks / Reading List / History sections, Favorites, Frequently Visited and a Privacy Report.
 - Dense, scrollable **Page menu** (text size, Reader, Find on Page, Share, bookmarks, reading list, desktop site, translate, print/PDF, hide toolbar, per-site ad blocking, website settings).
-- Tab overview grid with thumbnails, swipe-to-close, search, and Private Browsing (separate cookie profile on supported WebView versions).
+- Responsive tab overview grid with thumbnails, swipe-to-close, search, and Private Browsing (separate cookie profile on supported WebView versions).
 - Reader view with font size, serif/sans and four themes; long-press link and image menus; full-screen video.
 
 ## Ad blocker
@@ -37,3 +38,5 @@ An Android browser with a Safari (iOS 27) style interface, built natively with K
 
 ## Privacy
 iBrowser collects no personal data — no accounts, analytics or ads. See the [Privacy Policy](PRIVACY.md) (also in the app under Settings › About › Privacy Policy).
+
+Design notes and the editable Figma import script: [Safari redesign](design/SAFARI_REDESIGN.md).

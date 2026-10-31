@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -40,6 +41,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -72,109 +74,83 @@ fun AddressEntry(visible: Boolean) {
         enter = fadeIn(androidx.compose.animation.core.tween(180)) + androidx.compose.animation.scaleIn(Motion.smooth, initialScale = 1.04f),
         exit = fadeOut(androidx.compose.animation.core.tween(160)) + androidx.compose.animation.scaleOut(Motion.smooth, targetScale = 1.04f)
     ) {
-        val c = Ios.c
+        val base = Ios.c
         val tab = Browser.current
-        val initial = if (tab == null || tab.isStartPage) "" else tab.url
-        var tf by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
-        val focus = remember { FocusRequester() }
-        var suggestions by remember { mutableStateOf<List<String>>(emptyList()) }
-        val clipboard = LocalClipboardManager.current
-        LaunchedEffect(Unit) { delay(60); runCatching { focus.requestFocus() } }
+        androidx.compose.runtime.CompositionLocalProvider(LocalIos provides if (tab?.isPrivate == true) DarkIos else base) {
+            val c = Ios.c
+            val desktop = isLargeScreen()
+            val initial = if (tab == null || tab.isStartPage) "" else tab.url
+            var tf by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
+            val focus = remember { FocusRequester() }
+            var suggestions by remember { mutableStateOf<List<String>>(emptyList()) }
+            val clipboard = LocalClipboardManager.current
+            LaunchedEffect(Unit) { delay(60); runCatching { focus.requestFocus() } }
 
-        val q = tf.text.trim()
-        LaunchedEffect(q) {
-            if (q.isEmpty() || q == initial || tab?.isPrivate == true) { suggestions = emptyList(); return@LaunchedEffect }
-            delay(180)
-            val api = Store.settings.engine.suggest ?: return@LaunchedEffect
-            suggestions = withContext(Dispatchers.IO) {
-                runCatching {
-                    val url = api.replace("%s", URLEncoder.encode(q, "UTF-8"))
-                    DownloadManager.http.newCall(Request.Builder().url(url).build()).execute().use { r ->
-                        val body = r.body!!.string()
-                        val arr = JSONArray(body)
-                        val list = arr.getJSONArray(1)
-                        (0 until minOf(list.length(), 6)).map { list.getString(it) }
-                    }
-                }.getOrDefault(emptyList())
-            }
-        }
-
-        val local: List<Site> = remember(q) {
-            if (q.isEmpty()) emptyList()
-            else (Store.bookmarks.items + Store.favorites.items + Store.history.items.sortedByDescending { it.visits })
-                .filter { it.title.contains(q, true) || it.url.contains(q, true) }
-                .distinctBy { it.url }.take(6)
-        }
-        val topHit = local.firstOrNull { hostOf(it.url).startsWith(q.lowercase().removePrefix("www.")) }
-
-        Box(Modifier.fillMaxSize().wallpaper()) {
-            Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
-                if (q.isEmpty()) {
-                    Column(Modifier.weight(1f).fillMaxWidth().padding(bottom = 4.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.Bottom) {
-                        clipboard.getText()?.text?.takeIf { it.isNotBlank() && it.length < 2000 }?.let { clip ->
-                            SuggestionRow(Icons.Outlined.ContentPaste, "Paste and Go", clip.take(80)) { Browser.load(clip) }
-                            Spacer(Modifier.height(8.dp))
+            val q = tf.text.trim()
+            LaunchedEffect(q) {
+                if (q.isEmpty() || q == initial || tab?.isPrivate == true) { suggestions = emptyList(); return@LaunchedEffect }
+                delay(180)
+                val api = Store.settings.engine.suggest ?: return@LaunchedEffect
+                suggestions = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val url = api.replace("%s", URLEncoder.encode(q, "UTF-8"))
+                        DownloadManager.http.newCall(Request.Builder().url(url).build()).execute().use { r ->
+                            val body = r.body!!.string()
+                            val arr = JSONArray(body)
+                            val list = arr.getJSONArray(1)
+                            (0 until minOf(list.length(), 6)).map { list.getString(it) }
                         }
-                        SectionHeader("Favorites")
-                        FavoritesMini()
-                    }
-                } else LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 12.dp)) {
-                    run {
-                        if (topHit != null) {
-                            item { GroupLabel("Top Hit") }
-                            item { SiteSuggestion(topHit) }
-                        }
-                        item { GroupLabel("${Store.settings.engine.label} Search") }
-                        item {
-                            SuggestionRow(Icons.Outlined.Search, q, null, onFill = null) { Browser.load(q) }
-                        }
-                        items(suggestions.filter { it != q }) { s ->
-                            SuggestionRow(Icons.Outlined.Search, s, null, onFill = { tf = TextFieldValue(s, TextRange(s.length)) }) { Browser.load(s) }
-                        }
-                        val rest = local.filter { it != topHit }
-                        if (rest.isNotEmpty()) {
-                            item { GroupLabel("Bookmarks and History") }
-                            items(rest, key = { "l" + it.url }) { s -> SiteSuggestion(s) }
-                        }
-                        item { GroupLabel("On This Page") }
-                        item {
-                            SuggestionRow(Icons.Outlined.Search, "Find “$q”", null) {
-                                Browser.editing = false; Browser.startFind(); Browser.find(q)
-                            }
-                        }
-                    }
+                    }.getOrDefault(emptyList())
                 }
-                // Bottom field
-                Row(
-                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        Modifier.weight(1f).height(48.dp).glass(RoundedCornerShape(24.dp)).padding(horizontal = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Outlined.Search, null, tint = c.secondary, modifier = Modifier.size(19.dp))
-                        Spacer(Modifier.width(8.dp))
-                        BasicTextField(
-                            tf, { tf = it },
-                            singleLine = true,
-                            textStyle = Ios.body.copy(color = c.label),
-                            cursorBrush = SolidColor(c.tint),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go, autoCorrectEnabled = false),
-                            keyboardActions = KeyboardActions(onGo = { if (tf.text.isNotBlank()) Browser.load(tf.text) }),
-                            modifier = Modifier.weight(1f).focusRequester(focus),
-                            decorationBox = { inner ->
-                                Box { if (tf.text.isEmpty()) Text("Search or enter a URL", style = Ios.body, color = c.secondary); inner() }
+            }
+
+            val local: List<Site> = remember(q) {
+                if (q.isEmpty()) emptyList()
+                else (Store.bookmarks.items + Store.favorites.items + Store.history.items.sortedByDescending { it.visits })
+                    .filter { it.title.contains(q, true) || it.url.contains(q, true) }
+                    .distinctBy { it.url }.take(6)
+            }
+            val topHit = local.firstOrNull { hostOf(it.url).startsWith(q.lowercase().removePrefix("www.")) }
+
+            Box(Modifier.fillMaxSize().safariGlassWallpaper(tab?.isPrivate == true), contentAlignment = Alignment.TopCenter) {
+                Column(Modifier.widthIn(max = 860.dp).fillMaxSize().statusBarsPadding().imePadding()) {
+                    if (desktop) AddressEditor(tf, { tf = it }, focus, desktop = true)
+                    if (q.isEmpty()) {
+                        Column(Modifier.weight(1f).fillMaxWidth().padding(bottom = 4.dp), verticalArrangement = if (desktop) androidx.compose.foundation.layout.Arrangement.Top else androidx.compose.foundation.layout.Arrangement.Bottom) {
+                            clipboard.getText()?.text?.takeIf { it.isNotBlank() && it.length < 2000 }?.let { clip ->
+                                SuggestionRow(Icons.Outlined.ContentPaste, "Paste and Go", clip.take(80)) { Browser.load(clip) }
+                                Spacer(Modifier.height(8.dp))
                             }
-                        )
-                        if (tf.text.isNotEmpty()) {
-                            Box(Modifier.size(30.dp).pressable(scaleTo = 0.8f) { tf = TextFieldValue("") }, contentAlignment = Alignment.Center) {
-                                Icon(Icons.Outlined.Cancel, "Clear", tint = c.secondary, modifier = Modifier.size(18.dp))
+                            SectionHeader("Favorites")
+                            FavoritesMini()
+                        }
+                    } else LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 12.dp)) {
+                        run {
+                            if (topHit != null) {
+                                item { GroupLabel("Top Hit") }
+                                item { SiteSuggestion(topHit) }
+                            }
+                            item { GroupLabel("${Store.settings.engine.label} Search") }
+                            item {
+                                SuggestionRow(Icons.Outlined.Search, q, null, onFill = null) { Browser.load(q) }
+                            }
+                            items(suggestions.filter { it != q }) { s ->
+                                SuggestionRow(Icons.Outlined.Search, s, null, onFill = { tf = TextFieldValue(s, TextRange(s.length)) }) { Browser.load(s) }
+                            }
+                            val rest = local.filter { it != topHit }
+                            if (rest.isNotEmpty()) {
+                                item { GroupLabel("Bookmarks and History") }
+                                items(rest, key = { "l" + it.url }) { s -> SiteSuggestion(s) }
+                            }
+                            item { GroupLabel("On This Page") }
+                            item {
+                                SuggestionRow(Icons.Outlined.Search, "Find “$q”", null) {
+                                    Browser.editing = false; Browser.startFind(); Browser.find(q)
+                                }
                             }
                         }
                     }
-                    Spacer(Modifier.width(8.dp))
-                    TextAction("Cancel", color = c.label) { Browser.editing = false }
+                    if (!desktop) AddressEditor(tf, { tf = it }, focus, desktop = false)
                 }
             }
         }
@@ -248,5 +224,39 @@ private fun FavoritesMini() {
                 repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
+    }
+}
+
+
+@Composable
+private fun AddressEditor(tf: TextFieldValue, onChange: (TextFieldValue) -> Unit, focus: FocusRequester, desktop: Boolean) {
+    val c = Ios.c
+    Row(
+        Modifier.fillMaxWidth().then(if (!desktop) Modifier.navigationBarsPadding() else Modifier)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            Modifier.weight(1f).height(48.dp).glass(RoundedCornerShape(24.dp), strong = true).padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Outlined.Search, null, tint = c.secondary, modifier = Modifier.size(19.dp))
+            Spacer(Modifier.width(8.dp))
+            BasicTextField(
+                tf, onChange, singleLine = true,
+                textStyle = Ios.body.copy(color = c.label), cursorBrush = SolidColor(c.tint),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go, autoCorrectEnabled = false),
+                keyboardActions = KeyboardActions(onGo = { if (tf.text.isNotBlank()) Browser.load(tf.text) }),
+                modifier = Modifier.weight(1f).focusRequester(focus).testTag("address-editor"),
+                decorationBox = { inner -> Box { if (tf.text.isEmpty()) Text("Search or Enter Website Name", style = Ios.callout, color = c.secondary); inner() } }
+            )
+            if (tf.text.isNotEmpty()) {
+                Box(Modifier.size(30.dp).pressable(scaleTo = 0.9f) { onChange(TextFieldValue("")) }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.Cancel, "Clear", tint = c.secondary, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        TextAction("Cancel", color = c.tint) { Browser.editing = false }
     }
 }

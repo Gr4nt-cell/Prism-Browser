@@ -97,134 +97,52 @@ import kotlin.math.roundToInt
 @Composable
 fun TabsOverview(visible: Boolean) {
     AnimatedVisibility(visible, enter = fadeIn(tween(200)), exit = fadeOut(tween(220))) {
-        val c = Ios.c
         LaunchedEffect(Unit) { Browser.tabsPrivate = Browser.current?.isPrivate ?: false; Browser.archiveStaleTabs() }
         val private = Browser.tabsPrivate
-        // Arc Search: an Android-Recents style carousel; Safari layouts keep the iOS deck
-        val layout = com.gr4nt.browser.data.Store.settings.layout
-        val arc = layout == com.gr4nt.browser.data.ToolbarLayout.ARC
-        val safariGlass = layout == com.gr4nt.browser.data.ToolbarLayout.BOTTOM
-        var q by remember { mutableStateOf("") }
-        val group = Browser.tabs.filter { it.isPrivate == private }
-            .filter { q.isBlank() || it.displayTitle.contains(q, true) || it.url.contains(q, true) }
-        Box(Modifier.fillMaxSize().then(if (private) Modifier.safariGlassWallpaper(privateMode = true) else if (safariGlass) Modifier.safariGlassWallpaper() else Modifier.wallpaper())) {
-            Column(Modifier.fillMaxSize().statusBarsPadding()) {
-                // Search tabs
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).height(40.dp)
-                        .animateEnterExit(enter = slideInVertically(spring(0.85f, 300f)) { -it * 2 }, exit = slideOutVertically { -it * 2 })
-                        .glass(RoundedCornerShape(20.dp), elevation = 4.dp).padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Outlined.Search, null, tint = c.secondary, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    BasicTextField(
-                        q, { q = it }, singleLine = true,
-                        textStyle = Ios.body.copy(color = if (private) Color.White else c.label), cursorBrush = SolidColor(c.tint),
-                        modifier = Modifier.weight(1f),
-                        decorationBox = { inner -> Box { if (q.isEmpty()) Text("Search Tabs", style = Ios.body, color = c.secondary); inner() } }
-                    )
-                    if (arc) {
-                        // Arc has no mode switcher; a small toggle keeps Private Browsing reachable
-                        Text(
-                            if (private) "Private ✓" else "Private",
-                            style = Ios.footnote.copy(fontWeight = FontWeight.SemiBold),
-                            color = if (private) c.tint else c.secondary,
-                            modifier = Modifier.pressable(scaleTo = 0.9f) { Browser.tabsPrivate = !private }.padding(horizontal = 6.dp, vertical = 4.dp)
-                        )
+        val base = Ios.c
+        androidx.compose.runtime.CompositionLocalProvider(LocalIos provides if (private) DarkIos else base) {
+            val c = Ios.c
+            var q by remember { mutableStateOf("") }
+            val normalCount = Browser.tabs.count { !it.isPrivate }
+            val group = Browser.tabs.filter { it.isPrivate == private }
+                .filter { q.isBlank() || it.displayTitle.contains(q, true) || it.url.contains(q, true) }
+            Box(Modifier.fillMaxSize().safariGlassWallpaper(private)) {
+                Column(Modifier.fillMaxSize().statusBarsPadding()) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        GlassCircleButton(Icons.Outlined.Inventory2, "Archive", size = 44.dp) { Browser.showArchive = true }
+                        Text(if (private) "Private Browsing" else "$normalCount Tabs", style = Ios.title3,
+                            color = c.label, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                        GlassCircleButton(Icons.Outlined.Settings, "Settings", size = 44.dp) { Browser.showSettings = true }
+                    }
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).height(44.dp)
+                        .glass(RoundedCornerShape(22.dp), elevation = 3.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.Search, null, tint = c.secondary, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        BasicTextField(q, { q = it }, singleLine = true, textStyle = Ios.callout.copy(color = c.label), cursorBrush = SolidColor(c.tint),
+                            modifier = Modifier.weight(1f), decorationBox = { inner -> Box { if (q.isEmpty()) Text("Search Tabs", style = Ios.callout, color = c.secondary); inner() } })
+                        if (q.isNotEmpty()) InlineIconButton(Icons.Outlined.Close, "Clear Search", size = 30.dp, iconSize = 16.dp) { q = "" }
+                    }
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        if (group.isEmpty()) EmptyDeck(private, q.isNotBlank()) else SafariTabGrid(group, private)
                     }
                 }
-
-                Box(
-                    Modifier.weight(1f).fillMaxWidth().animateEnterExit(
-                        enter = scaleIn(spring(0.8f, 260f), initialScale = 1.18f) + fadeIn(tween(160)),
-                        exit = scaleOut(spring(1f, 400f), targetScale = 1.18f) + fadeOut(tween(160))
-                    )
-                ) {
-                    if (group.isEmpty()) {
-                        EmptyDeck(private, q.isNotBlank())
-                    } else {
-                        if (safariGlass) SafariTabGrid(group, private)
-                        else CardDeck(group, private, arc = arc)
+                Row(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp).fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    GlassCircleButton(SafariSymbols.Plus, "New Tab", size = 48.dp) {
+                        Browser.newTab(private = private); Browser.showTabs = false; Browser.editing = true
                     }
-                }
-            }
-
-            if (arc) {
-                // Arc Search tab switcher bar:  [Archive]   ( + )   [Settings]
-                Row(
-                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 28.dp, vertical = 10.dp).fillMaxWidth()
-                        .animateEnterExit(enter = slideInVertically(spring(0.82f, 320f)) { it * 2 }, exit = slideOutVertically(spring(1f, 420f)) { it * 2 }),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    GlassCircleButton(Icons.Outlined.Inventory2, "Archive", size = 50.dp) { Browser.showArchive = true }
-                    GlassCircleButton(Icons.Outlined.Add, "New Tab", size = 66.dp) {
-                        Browser.newTab(private = private)
+                    Row(Modifier.height(46.dp).glass(RoundedCornerShape(23.dp)).padding(4.dp)) {
+                        Segment("Private", private) { Browser.tabsPrivate = true }
+                        Segment("$normalCount Tabs", !private) { Browser.tabsPrivate = false }
+                    }
+                    GlassCircleButton(Icons.Outlined.Check, "Done", size = 48.dp, tint = c.tint) {
+                        val current = Browser.current
+                        if (current == null || current.isPrivate != private) {
+                            val first = Browser.tabs.lastOrNull { it.isPrivate == private } ?: Browser.newTab(private = private)
+                            Browser.select(first.id)
+                        }
                         Browser.showTabs = false
-                        Browser.editing = true
                     }
-                    GlassCircleButton(Icons.Outlined.Settings, "Settings", size = 50.dp) { Browser.showSettings = true }
-                }
-            } else if (safariGlass) {
-                Row(
-                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 18.dp, vertical = 10.dp).fillMaxWidth()
-                        .animateEnterExit(enter = slideInVertically(spring(0.82f, 320f)) { it * 2 }, exit = slideOutVertically(spring(1f, 420f)) { it * 2 }),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        if (private) "Private ✓" else "Private",
-                        style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = if (private) c.tint else c.label,
-                        modifier = Modifier.pressable(scaleTo = 0.9f) { Browser.tabsPrivate = !private }.padding(horizontal = 10.dp, vertical = 8.dp)
-                    )
-                    GlassCircleButton(Icons.Outlined.Add, "New Tab", size = 56.dp) {
-                        Browser.newTab(private = private)
-                        Browser.showTabs = false
-                        Browser.editing = true
-                    }
-                    Text(
-                        "Done", style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = c.tint,
-                        modifier = Modifier.pressable(scaleTo = 0.9f) {
-                            val cur = Browser.current
-                            if (cur == null || cur.isPrivate != private) {
-                                val first = Browser.tabs.lastOrNull { it.isPrivate == private } ?: Browser.newTab(private = private)
-                                Browser.select(first.id)
-                            }
-                            Browser.showTabs = false
-                        }.padding(horizontal = 10.dp, vertical = 8.dp)
-                    )
-                }
-            } else
-            // Bottom glass bar: +  |  Private / N Tabs  |  Done
-            Row(
-                Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp).fillMaxWidth()
-                    .animateEnterExit(enter = slideInVertically(spring(0.82f, 320f)) { it * 2 }, exit = slideOutVertically(spring(1f, 420f)) { it * 2 }),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                GlassCircleButton(Icons.Outlined.Add, "New tab") {
-                    Browser.newTab(private = private)
-                    Browser.showTabs = false
-                    Browser.editing = true
-                }
-                if (!private) {
-                    Spacer(Modifier.width(8.dp))
-                    GlassCircleButton(Icons.Outlined.Inventory2, "Archive") { Browser.showArchive = true }
-                }
-                Spacer(Modifier.weight(1f))
-                Row(Modifier.height(46.dp).glass(RoundedCornerShape(23.dp)).padding(4.dp)) {
-                    val normalCount = Browser.tabs.count { !it.isPrivate }
-                    Segment("Private", private) { Browser.tabsPrivate = true }
-                    Segment(if (normalCount == 1) "1 Tab" else "$normalCount Tabs", !private) { Browser.tabsPrivate = false }
-                }
-                Spacer(Modifier.weight(1f))
-                GlassCircleButton(Icons.Outlined.Check, "Done", tint = c.tint) {
-                    val cur = Browser.current
-                    if (cur == null || cur.isPrivate != private) {
-                        val first = Browser.tabs.lastOrNull { it.isPrivate == private } ?: Browser.newTab(private = private)
-                        Browser.select(first.id)
-                    }
-                    Browser.showTabs = false
                 }
             }
         }
@@ -234,7 +152,7 @@ fun TabsOverview(visible: Boolean) {
 @Composable
 private fun SafariTabGrid(tabs: List<BrowserTab>, private: Boolean) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+        columns = if (isLargeScreen()) GridCells.Adaptive(220.dp) else GridCells.Fixed(2),
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 130.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -247,10 +165,19 @@ private fun SafariTabGrid(tabs: List<BrowserTab>, private: Boolean) {
 @Composable
 private fun SafariTabCard(tab: BrowserTab, private: Boolean) {
     val c = Ios.c
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(20.dp)
+    var swipe by remember(tab.id) { mutableFloatStateOf(0f) }
+    val threshold = with(LocalDensity.current) { 110.dp.toPx() }
     val selected = Browser.currentId == tab.id
     Column(
-        Modifier.fillMaxWidth().height(208.dp).glassCard(shape)
+        Modifier.fillMaxWidth().height(if (isLargeScreen()) 280.dp else 238.dp)
+            .graphicsLayer { translationX = swipe; alpha = (1f - abs(swipe) / (threshold * 2f)).coerceIn(0.25f, 1f) }
+            .pointerInput(tab.id) {
+                detectHorizontalDragGestures(
+                    onDragEnd = { if (abs(swipe) > threshold) Browser.close(tab.id) else swipe = 0f },
+                    onDragCancel = { swipe = 0f }
+                ) { change, drag -> change.consume(); swipe += drag }
+            }.glassCard(shape)
             .then(if (selected) Modifier.border(2.dp, c.tint, shape) else Modifier)
             .pressable(scaleTo = 0.98f) { Browser.select(tab.id); Browser.showTabs = false }
             .padding(8.dp)

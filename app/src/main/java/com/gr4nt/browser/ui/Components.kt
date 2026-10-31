@@ -49,6 +49,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -61,6 +63,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.onClick as semanticClick
+import androidx.compose.ui.semantics.onLongClick as semanticLongClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
@@ -90,16 +98,18 @@ fun Modifier.wallpaper(): Modifier {
 fun Modifier.safariGlassWallpaper(privateMode: Boolean = false): Modifier {
     val c = Ios.c
     return drawBehind {
-        if (privateMode) {
-            drawRect(Color(0xFF1C1F2A))
-        } else if (c.dark) {
-            drawRect(c.wall)
-        } else {
-            drawRect(Color(0xFFEEF2F8))
-            val radius = maxOf(size.width, size.height) * 0.62f
-            drawRect(Brush.radialGradient(colors = listOf(Color(0xFFA9D4F5), Color.Transparent), center = androidx.compose.ui.geometry.Offset(size.width * 0.20f, size.height * 0.10f), radius = radius))
-            drawRect(Brush.radialGradient(colors = listOf(Color(0xFFF7C3A8), Color.Transparent), center = androidx.compose.ui.geometry.Offset(size.width * 0.82f, size.height * 0.34f), radius = radius * 0.88f))
-            drawRect(Brush.radialGradient(colors = listOf(Color(0xFFA8E3C8), Color.Transparent), center = androidx.compose.ui.geometry.Offset(size.width * 0.52f, size.height * 0.96f), radius = radius * 0.95f))
+        drawRect(if (privateMode) Color(0xFF171820) else if (c.dark) Color(0xFF14151D) else Color(0xFFF1F2F8))
+        if (!privateMode) {
+            val radius = maxOf(size.width, size.height) * 0.85f
+            drawRect(Brush.radialGradient(
+                colors = listOf((if (c.dark) Color(0xFF343552) else Color(0xFFD6DFF3)).copy(alpha = 0.90f), Color.Transparent),
+                center = androidx.compose.ui.geometry.Offset(size.width * 0.12f, size.height * 0.10f), radius = radius))
+            drawRect(Brush.radialGradient(
+                colors = listOf((if (c.dark) Color(0xFF442A4E) else Color(0xFFEAD7EB)).copy(alpha = 0.75f), Color.Transparent),
+                center = androidx.compose.ui.geometry.Offset(size.width * 0.95f, size.height * 0.48f), radius = radius * 0.8f))
+            drawRect(Brush.radialGradient(
+                colors = listOf((if (c.dark) Color(0xFF1C3942) else Color(0xFFD5EAE9)).copy(alpha = 0.70f), Color.Transparent),
+                center = androidx.compose.ui.geometry.Offset(size.width * 0.25f, size.height), radius = radius * 0.9f))
         }
     }
 }
@@ -115,7 +125,7 @@ fun Modifier.glassCard(shape: Shape): Modifier {
         // Soft cool frost with a fine top sheen and a restrained contact shadow.
         .shadow(2.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.42f else 0.07f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.52f else 0.12f))
         .clip(shape)
-        .background(if (c.dark) c.card.copy(alpha = 0.88f) else Color(0xEAF4F8FD))
+        .background(if (c.dark) c.card.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.68f))
         .background(
             Brush.verticalGradient(
                 0f to Color.White.copy(alpha = if (c.dark) 0.10f else 0.62f),
@@ -128,8 +138,8 @@ fun Modifier.glassCard(shape: Shape): Modifier {
 
 /** Shared spring specs so motion feels consistent everywhere. */
 object Motion {
-    val press = spring<Float>(dampingRatio = 0.5f, stiffness = 700f)
-    val release = spring<Float>(dampingRatio = 0.45f, stiffness = 380f)
+    val press = spring<Float>(dampingRatio = 0.82f, stiffness = 700f)
+    val release = spring<Float>(dampingRatio = 0.78f, stiffness = 380f)
     val smooth = spring<Float>(dampingRatio = 0.82f, stiffness = 320f)
     val bouncy = spring<Float>(dampingRatio = 0.68f, stiffness = 380f)
     fun <T> soft() = spring<T>(dampingRatio = 0.86f, stiffness = 300f)
@@ -143,7 +153,7 @@ object Motion {
 @Composable
 fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp, glow: Float = 0f): Modifier {
     val c = Ios.c
-    val sheenTop = if (c.dark) 0.12f else 0.42f
+    val sheenTop = if (c.dark) 0.18f else 0.58f
     val rim = if (c.dark) 0.08f else 0.26f
     if (!c.liquid) {
         // plain frosted bar: flat translucent fill, even hairline, softer shadow — no sheen, rim or refraction tint
@@ -211,7 +221,7 @@ fun View.tick() {
 fun Modifier.pressable(
     enabled: Boolean = true,
     onLongClick: (() -> Unit)? = null,
-    scaleTo: Float = 0.86f,
+    scaleTo: Float = 0.96f,
     haptic: Boolean = true,
     onPressedChange: ((Boolean) -> Unit)? = null,
     onClick: () -> Unit
@@ -223,6 +233,13 @@ fun Modifier.pressable(
     val long by rememberUpdatedState(onLongClick)
     val change by rememberUpdatedState(onPressedChange)
     return this
+        .semantics(mergeDescendants = true) {
+            role = Role.Button
+            if (enabled) {
+                semanticClick { click(); true }
+                if (onLongClick != null) semanticLongClick { long?.invoke(); true }
+            } else disabled()
+        }
         .graphicsLayer { scaleX = scale; scaleY = scale }
         .pointerInput(enabled, onLongClick != null) {
             if (!enabled) return@pointerInput
@@ -262,6 +279,13 @@ fun Modifier.tapHighlight(
     val click by rememberUpdatedState(onClick)
     val long by rememberUpdatedState(onLongClick)
     return this
+        .semantics(mergeDescendants = true) {
+            role = Role.Button
+            if (enabled) {
+                semanticClick { click(); true }
+                if (onLongClick != null) semanticLongClick { long?.invoke(); true }
+            } else disabled()
+        }
         .drawBehind { drawRect(bg) }
         .pointerInput(enabled, onLongClick != null) {
             if (!enabled) return@pointerInput
@@ -465,13 +489,16 @@ fun IosSheet(
     content: @Composable ColumnScope.() -> Unit
 ) {
     AnimatedVisibility(visible, enter = fadeIn(tween(220)), exit = fadeOut(tween(220))) {
+        val desktop = isLargeScreen()
         val drag = remember { Animatable(0f) }
         val scope = rememberCoroutineScope()
         val dismiss by rememberUpdatedState(onDismiss)
         LaunchedEffect(Unit) { drag.snapTo(0f) }
-        Box(Modifier.fillMaxSize().background(Ios.c.scrim)) {
+        Box(Modifier.fillMaxSize().background(Ios.c.scrim), contentAlignment = Alignment.Center) {
             Column(
                 Modifier
+                    .widthIn(max = if (desktop) 720.dp else 10000.dp)
+                    .heightIn(max = if (desktop) 820.dp else 10000.dp)
                     .fillMaxSize()
                     .animateEnterExit(
                         enter = slideInVertically(spring(dampingRatio = 0.86f, stiffness = 340f, visibilityThreshold = IntOffset.VisibilityThreshold)) { it },
@@ -479,9 +506,9 @@ fun IosSheet(
                     )
                     .graphicsLayer { translationY = drag.value.coerceAtLeast(0f) }
                     .statusBarsPadding()
-                    .padding(top = 10.dp)
-                    .clip(RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
-                    .wallpaper()
+                    .padding(top = if (desktop) 24.dp else 10.dp, bottom = if (desktop) 24.dp else 0.dp)
+                    .clip(if (desktop) RoundedCornerShape(26.dp) else RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
+                    .background(Ios.c.grouped)
             ) {
                 // grabber + nav bar: drag down to dismiss
                 Column(

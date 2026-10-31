@@ -391,16 +391,16 @@ fun SettingsSheet(visible: Boolean) {
                     }
                 }
             }
-            IosGroup("Layout", footer = "Safari Glass uses a pastel glass backdrop, two floating bottom bars and grid tabs. Arc, Compact and Top remain available.") {
-                ToolbarLayout.entries.forEachIndexed { i, l ->
+            IosGroup("Layout", footer = "Compact uses Safari’s floating address pill. Bottom adds a full toolbar; Top keeps the address above the page. All layouts use the same tab grid and Liquid Glass material.") {
+                listOf(ToolbarLayout.COMPACT, ToolbarLayout.BOTTOM, ToolbarLayout.TOP).forEachIndexed { i, l ->
                     IosRow(
-                        when (l) { ToolbarLayout.ARC -> "Arc"; ToolbarLayout.BOTTOM -> "Safari Glass"; else -> "Safari · " + l.name.lowercase().replaceFirstChar { it.uppercase() } },
-                        divider = i < ToolbarLayout.entries.size - 1,
+                        when (l) { ToolbarLayout.BOTTOM -> "Safari · Bottom"; ToolbarLayout.TOP -> "Safari · Top"; else -> "Safari · Compact" },
+                        divider = i < 2,
                         trailing = { if (s.layout == l) Text("✓", color = c.tint, style = Ios.headline) }
                     ) { s.layout = l; s.save() }
                 }
             }
-            IosGroup(footer = "On tablets, Chromebooks and desktop windows iBrowser uses the Arc desktop layout: a sidebar with your tabs and Favorites, and the page in a card beside it.") {
+            IosGroup(footer = "On tablets and wide windows, Safari desktop chrome places the address above a horizontal tab strip. The sidebar opens Bookmarks, Reading List, History and your tabs.") {
                 IosRow("Desktop Layout on Large Screens", divider = false, trailing = { IosSwitch(s.desktopLayout) { s.desktopLayout = it; s.save() } })
             }
             ToolbarAppearanceGroup()

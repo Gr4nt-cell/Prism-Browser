@@ -128,12 +128,12 @@ fun AdaptiveGlass(backdrop: Color?, content: @Composable () -> Unit) {
     val palette = (if (darkGlass) DarkIos else LightIos).let { p ->
         // keep the tint subtle: a hint of the colour behind, not a solid paint
         val mixed = lerp(neutral, tint, if (backdrop == null || !st.barAdaptiveTint) 0f else 0.42f)
-        val frosted = lerp(mixed, Color(0xFFEAF1F8), onWhite)       // cool neutral frost on white
+        val frosted = lerp(mixed, Color(0xFFF0F1F5), onWhite)       // cool neutral frost on white
         p.copy(
             glass = frosted.copy(alpha = (baseAlpha + (if (darkGlass) 0.02f else 0f) + onWhite * 0.28f * (1f - baseAlpha)).coerceAtMost(0.93f)),
             liquid = st.barLiquidGlass,
             glassStrong = frosted.copy(alpha = 0.84f + onWhite * 0.06f),
-            glassBorder = if (darkGlass) Color.White.copy(alpha = 0.24f) else Color.Black.copy(alpha = 0.15f + onWhite * 0.09f),
+            glassBorder = if (darkGlass) Color.White.copy(alpha = 0.24f) else Color.White.copy(alpha = 0.72f - onWhite * 0.18f),
             glassShadow = 0.92f + onWhite * 0.42f,
             // keep the theme's own tint colour for links/buttons
             tint = if (darkGlass) DarkIos.tint else LightIos.tint

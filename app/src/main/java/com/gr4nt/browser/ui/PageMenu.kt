@@ -27,6 +27,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.ChromeReaderMode
@@ -36,6 +38,7 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.IosShare
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Print
 import androidx.compose.material.icons.outlined.Search
@@ -68,7 +71,7 @@ fun PageMenu(visible: Boolean) {
         val t = Browser.current ?: return@AnimatedVisibility
         fun act(f: () -> Unit) { Browser.showPageMenu = false; f() }
         Box(Modifier.fillMaxSize().background(c.scrim.copy(alpha = 0.12f)).clickable(interactionSource = null, indication = null) { Browser.showPageMenu = false }) {
-            val top = Store.settings.layout == com.gr4nt.browser.data.ToolbarLayout.TOP
+            val top = isLargeScreen() || Store.settings.layout == com.gr4nt.browser.data.ToolbarLayout.TOP
             val origin = androidx.compose.ui.graphics.TransformOrigin(0.08f, if (top) 0f else 1f)
             Box(
                 Modifier.align(if (top) Alignment.TopStart else Alignment.BottomStart)
@@ -96,7 +99,9 @@ fun PageMenu(visible: Boolean) {
                         SmallBox(Modifier.weight(1f), { Browser.setTextZoom(t.textZoom + 10) }) { Text("A", fontSize = 21.sp, color = c.label) }
                     }
                     if (!t.isStartPage) {
+                        if (t.canGoForward) MenuItem(SafariSymbols.Forward, "Forward") { act { Browser.forward() } }
                         MenuItem(Icons.Outlined.ChromeReaderMode, "Show Reader") { act { Browser.openReader() } }
+                        MenuItem(Icons.Outlined.AutoAwesome, "Summarize Page") { act { Browser.summarize() } }
                         MenuItem(Icons.Outlined.Search, "Find on Page") { act { Browser.startFind() } }
                         MenuDivider(true)
                         MenuItem(Icons.Outlined.IosShare, "Share") { act { Browser.share(t.url, t.title) } }
@@ -134,6 +139,8 @@ fun PageMenu(visible: Boolean) {
                     }
                     MenuItem(Icons.Outlined.Shield, "Privacy Report") { act { Browser.showPrivacy = true } }
                     MenuItem(Icons.Outlined.VisibilityOff, "New Private Tab") { act { Browser.newTab(private = true); Browser.editing = true } }
+                    MenuItem(Icons.Outlined.Inventory2, "Archive") { act { Browser.showArchive = true } }
+                    MenuItem(Icons.Outlined.MoreHoriz, "All Browser Actions") { act { Browser.showActions = true } }
                     MenuItem(Icons.Outlined.Settings, "Settings") { act { Browser.showSettings = true } }
                 }
             }

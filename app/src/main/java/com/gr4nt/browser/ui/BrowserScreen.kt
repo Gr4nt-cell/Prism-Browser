@@ -136,18 +136,13 @@ fun BrowserApp() {
         if (tab?.isStartPage != true && !desktop) Box(Modifier.fillMaxWidth().height(statusTop).background(statusColor))
 
         if (tab != null && desktop) {
-            // Arc desktop: the page is a rounded card next to the sidebar
-            val sideOpen = ArcDesktop.sidebarOpen
             val startPad by androidx.compose.animation.core.animateDpAsState(
-                if (sideOpen) ARC_SIDEBAR_W + ARC_GAP * 2 else ARC_GAP, spring(dampingRatio = 0.86f, stiffness = 380f), label = "cardStart"
+                if (SafariDesktop.sidebarOpen) SAFARI_SIDEBAR_WIDTH + 16.dp else 0.dp,
+                spring(dampingRatio = 0.9f, stiffness = 380f), label = "safariSidebar"
             )
-            Box(
-                Modifier.fillMaxSize()
-                    .padding(start = startPad, top = statusTop + ARC_GAP, end = ARC_GAP, bottom = navBottom + ARC_GAP)
-                    .arcPageCard()
-            ) {
+            Box(Modifier.fillMaxSize().padding(start = startPad, top = statusTop + SAFARI_CHROME_HEIGHT, bottom = navBottom)) {
                 WebContent(tab)
-                if (tab.isStartPage) Box(Modifier.fillMaxSize()) { StartPage(tab, inSheet = false) }
+                if (tab.isStartPage) StartPage(tab, inSheet = false)
             }
         } else if (tab != null) {
             Box(Modifier.fillMaxSize().padding(top = statusTop + topBarH, bottom = bottomInset)) {
@@ -196,24 +191,22 @@ fun BrowserApp() {
         val topBackdrop by rememberBackdropColor({ topBounds }, SampleSide.BELOW, sampling && (desktop || layout == ToolbarLayout.TOP))
 
         if (tab != null && desktop) {
+            Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().onGloballyPositioned { topBounds = it.boundsInWindow() }) {
+                AdaptiveGlass(topBackdrop) { SafariDesktopChrome(tab) }
+            }
             androidx.compose.animation.AnimatedVisibility(
-                ArcDesktop.sidebarOpen,
-                Modifier.align(Alignment.TopStart).statusBarsPadding().navigationBarsPadding().padding(ARC_GAP),
-                enter = androidx.compose.animation.slideInHorizontally(spring(dampingRatio = 0.86f, stiffness = 380f)) { -it } + fadeIn(),
-                exit = androidx.compose.animation.slideOutHorizontally(spring(dampingRatio = 1f, stiffness = 420f)) { -it } + fadeOut()
-            ) {
-                AdaptiveGlass(null) { ArcSidebar(tab) }
-            }
-            if (!ArcDesktop.sidebarOpen) {
-                ArcSidebarToggle(Modifier.align(Alignment.BottomStart).navigationBarsPadding().padding(start = 18.dp, bottom = 18.dp))
-            }
+                SafariDesktop.sidebarOpen,
+                Modifier.align(Alignment.TopStart).padding(top = statusTop + SAFARI_CHROME_HEIGHT + 8.dp, start = 8.dp, bottom = navBottom + 8.dp),
+                enter = androidx.compose.animation.slideInHorizontally { -it } + fadeIn(),
+                exit = androidx.compose.animation.slideOutHorizontally { -it } + fadeOut()
+            ) { SafariSidebar(tab) }
         } else if (tab != null && !Browser.findMode) {
             when (layout) {
                 ToolbarLayout.ARC -> Box(
                     Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 6.dp)
                         .onGloballyPositioned { bottomBounds = it.boundsInWindow() }.then(hideBottom)
                 ) {
-                    AdaptiveGlass(bottomBackdrop) { ArcToolbar(tab) }
+                    AdaptiveGlass(bottomBackdrop) { CompactToolbar(tab) }
                 }
                 ToolbarLayout.COMPACT -> Box(
                     Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 6.dp)
@@ -336,7 +329,7 @@ fun AddressPill(tab: BrowserTab, modifier: Modifier = Modifier, height: Int = 48
         Row(Modifier.fillMaxSize().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             // Page menu
             Box(contentAlignment = Alignment.Center) {
-                InlineIconButton(Icons.AutoMirrored.Outlined.Article, "Page menu", iconSize = 21.dp) { Browser.showPageMenu = true }
+                InlineIconButton(SafariSymbols.PageMenu, "Page menu", iconSize = 21.dp) { Browser.showPageMenu = true }
                 if (tab.blocked > 0 && Store.settings.adBlock) {
                     Box(Modifier.align(Alignment.TopEnd).padding(top = 7.dp, end = 6.dp).size(7.dp).clip(CircleShape).background(c.green))
                 }
@@ -351,8 +344,8 @@ fun AddressPill(tab: BrowserTab, modifier: Modifier = Modifier, height: Int = 48
                     Spacer(Modifier.width(4.dp))
                 }
                 Text(
-                    if (tab.isStartPage) "Search or enter website name" else tab.host.ifBlank { tab.url },
-                    style = Ios.callout.copy(fontWeight = if (tab.isStartPage) FontWeight.Normal else FontWeight.Medium),
+                    if (tab.isStartPage) "Search or Enter Website Name" else tab.host.ifBlank { tab.url },
+                    style = Ios.callout.copy(fontSize = (if (height < 44) 13 else 15).sp, fontWeight = if (tab.isStartPage) FontWeight.Normal else FontWeight.Medium),
                     color = if (tab.isStartPage) c.secondary else c.label,
                     maxLines = 1, overflow = TextOverflow.Ellipsis
                 )
@@ -426,13 +419,10 @@ private fun CompactToolbar(tab: BrowserTab) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 GlassCircleButton(
-                    Icons.Outlined.ArrowBackIosNew, "Back",
+                    SafariSymbols.Back, "Back",
                     enabled = tab.canGoBack || !tab.isStartPage,
                     onLongClick = { if (tab.canGoForward) Browser.forward() }
                 ) { Browser.back() }
-                if (tab.canGoForward) {
-                    GlassCircleButton(Icons.Outlined.ArrowForwardIos, "Forward", size = 40.dp) { Browser.forward() }
-                }
                 AddressPill(tab, Modifier.weight(1f))
                 TabsButton()
             }
@@ -443,7 +433,7 @@ private fun CompactToolbar(tab: BrowserTab) {
 @Composable
 private fun TabsButton(size: Int = 48) {
     GlassCircleButton(
-        Icons.Outlined.FilterNone, "Tabs", size = size.dp,
+        SafariSymbols.Tabs, "Tabs", size = size.dp,
         onLongClick = { Browser.showTabMenu = true }
     ) {
         Browser.captureThumbnail(); Browser.showTabs = true
@@ -491,7 +481,7 @@ private fun TabsCountToolbarButton(tab: BrowserTab) {
         },
         contentAlignment = Alignment.Center
     ) {
-        Icon(Icons.Outlined.FilterNone, "Tabs", tint = c.tint, modifier = Modifier.size(24.dp))
+        Icon(SafariSymbols.Tabs, "Tabs", tint = c.tint, modifier = Modifier.size(24.dp))
         Text(
             count.coerceAtMost(99).toString(),
             style = Ios.caption2.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
@@ -504,9 +494,9 @@ private fun TabsCountToolbarButton(tab: BrowserTab) {
 @Composable
 private fun ToolbarRow(tab: BrowserTab) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically) {
-        ToolbarIcon(Icons.Outlined.ArrowBackIosNew, "Back", enabled = tab.canGoBack || !tab.isStartPage) { Browser.back() }
-        ToolbarIcon(Icons.Outlined.ArrowForwardIos, "Forward", enabled = tab.canGoForward) { Browser.forward() }
-        ToolbarIcon(Icons.Outlined.IosShare, "Share", enabled = !tab.isStartPage) { Browser.share(tab.url, tab.title) }
+        ToolbarIcon(SafariSymbols.Back, "Back", enabled = tab.canGoBack || !tab.isStartPage) { Browser.back() }
+        ToolbarIcon(SafariSymbols.Forward, "Forward", enabled = tab.canGoForward) { Browser.forward() }
+        ToolbarIcon(SafariSymbols.Share, "Share", enabled = !tab.isStartPage) { Browser.share(tab.url, tab.title) }
         ToolbarIcon(Icons.AutoMirrored.Outlined.MenuBook, "Bookmarks") { Browser.startSection = 1; Browser.showLibrary = true }
         TabsCountToolbarButton(tab)
     }

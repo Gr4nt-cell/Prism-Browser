@@ -45,12 +45,14 @@ enum class SearchEngine(val label: String, val query: String, val suggest: Strin
 const val DEFAULT_TEXT_ZOOM = 90
 
 class Settings(private val p: SharedPreferences) {
-    // Safari Glass is the new default. Keep explicit Safari choices and migrate the old Arc default once.
+    // Move the former default/Arc shell to Safari's compact chrome once.
+    // Explicit Top/Compact choices and every non-visual preference are retained.
     var layout by mutableStateOf(
-        if (!p.getBoolean("safariGlassMigrated", false)) {
-            val saved = runCatching { ToolbarLayout.valueOf(p.getString("layout", "ARC")!!) }.getOrDefault(ToolbarLayout.ARC)
-            if (saved == ToolbarLayout.ARC) ToolbarLayout.BOTTOM else saved
-        } else runCatching { ToolbarLayout.valueOf(p.getString("layout", "BOTTOM")!!) }.getOrDefault(ToolbarLayout.BOTTOM)
+        runCatching { ToolbarLayout.valueOf(p.getString("layout", "COMPACT")!!) }
+            .getOrDefault(ToolbarLayout.COMPACT).let { saved ->
+                if (!p.getBoolean("safari27ChromeMigrated", false) &&
+                    (saved == ToolbarLayout.ARC || saved == ToolbarLayout.BOTTOM)) ToolbarLayout.COMPACT else saved
+            }
     )
     /** Archive tabs not opened for this many hours (0 = never). Arc's default is 24 h. */
     var archiveAfterHours by mutableStateOf(p.getInt("archiveHours", 24))
@@ -98,6 +100,7 @@ class Settings(private val p: SharedPreferences) {
             .putString("layout", layout.name)
             .putBoolean("arcMigrated", true)
             .putBoolean("safariGlassMigrated", true)
+            .putBoolean("safari27ChromeMigrated", true)
             .putInt("archiveHours", archiveAfterHours)
             .putBoolean("pinchSummary", pinchToSummarize)
             .putString("engine", engine.name)

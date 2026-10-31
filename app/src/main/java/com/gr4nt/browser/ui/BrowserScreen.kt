@@ -157,6 +157,15 @@ fun BrowserApp() {
             }
         }
 
+        if (tab != null && !desktop && layout == ToolbarLayout.BOTTOM && !tab.isStartPage && !Browser.editing && !Browser.showTabs) {
+            Box(
+                Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 2.dp).fillMaxWidth().height(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(tab.host, style = Ios.caption.copy(fontSize = 12.sp), color = c.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+
         // ---- Toolbars ----
         // ---- Adaptive glass: sample the page colour next to each bar ----
         var bottomBounds by remember { mutableStateOf<Rect?>(null) }
@@ -341,7 +350,7 @@ fun AddressPill(tab: BrowserTab, modifier: Modifier = Modifier, height: Int = 48
                     Spacer(Modifier.width(4.dp))
                 }
                 Text(
-                    if (tab.isStartPage) "Search or enter a URL" else tab.host.ifBlank { tab.url },
+                    if (tab.isStartPage) "Search or enter website name" else tab.host.ifBlank { tab.url },
                     style = Ios.callout.copy(fontWeight = if (tab.isStartPage) FontWeight.Normal else FontWeight.Medium),
                     color = if (tab.isStartPage) c.secondary else c.label,
                     maxLines = 1, overflow = TextOverflow.Ellipsis
@@ -459,28 +468,46 @@ private fun BottomToolbar(tab: BrowserTab) {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CollapsedPill(tab) }
         } else {
             Column(
-                Modifier.fillMaxWidth().padding(horizontal = 10.dp)
-                    .glass(RoundedCornerShape(30.dp))
-                    .padding(horizontal = 6.dp, vertical = 6.dp)
+                Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                AddressPill(tab, Modifier.fillMaxWidth(), height = 46)
-                Spacer(Modifier.height(2.dp))
-                ToolbarRow(tab)
+                AddressPill(tab, Modifier.fillMaxWidth(), height = 48)
+                Box(Modifier.fillMaxWidth().height(48.dp).glass(RoundedCornerShape(24.dp)), contentAlignment = Alignment.Center) {
+                    ToolbarRow(tab)
+                }
             }
         }
     }
 }
 
 @Composable
+private fun TabsCountToolbarButton(tab: BrowserTab) {
+    val c = Ios.c
+    val count = Browser.tabs.count { it.isPrivate == tab.isPrivate }
+    Box(
+        Modifier.size(44.dp).pressable(scaleTo = 0.8f, onLongClick = { Browser.showTabMenu = true }) {
+            Browser.captureThumbnail(); Browser.showTabs = true
+        },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(Icons.Outlined.FilterNone, "Tabs", tint = c.tint, modifier = Modifier.size(24.dp))
+        Text(
+            count.coerceAtMost(99).toString(),
+            style = Ios.caption2.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
+            color = c.tint,
+            modifier = Modifier.align(Alignment.TopEnd).padding(top = 2.dp, end = 4.dp).background(c.glassStrong, CircleShape).padding(horizontal = 3.dp, vertical = 1.dp)
+        )
+    }
+}
+
+@Composable
 private fun ToolbarRow(tab: BrowserTab) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically) {
         ToolbarIcon(Icons.Outlined.ArrowBackIosNew, "Back", enabled = tab.canGoBack || !tab.isStartPage) { Browser.back() }
         ToolbarIcon(Icons.Outlined.ArrowForwardIos, "Forward", enabled = tab.canGoForward) { Browser.forward() }
         ToolbarIcon(Icons.Outlined.IosShare, "Share", enabled = !tab.isStartPage) { Browser.share(tab.url, tab.title) }
         ToolbarIcon(Icons.AutoMirrored.Outlined.MenuBook, "Bookmarks") { Browser.startSection = 1; Browser.showLibrary = true }
-        ToolbarIcon(Icons.Outlined.FilterNone, "Tabs", onLongClick = { Browser.showTabMenu = true }) {
-            Browser.captureThumbnail(); Browser.showTabs = true
-        }
+        TabsCountToolbarButton(tab)
     }
 }
 

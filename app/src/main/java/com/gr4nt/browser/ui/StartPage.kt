@@ -74,12 +74,15 @@ private val SECTIONS = listOf(
 
 @Composable
 fun StartPage(tab: BrowserTab?, inSheet: Boolean) {
-    val c = Ios.c
-    // Arc Search's new tab is just Top Sites; Bookmarks/History stay in the ^ menu and Library
+    val safariGlass = Store.settings.layout == com.gr4nt.browser.data.ToolbarLayout.BOTTOM
     if (!inSheet && Store.settings.layout == com.gr4nt.browser.data.ToolbarLayout.ARC) { ArcHome(tab); return }
-    Column(Modifier.fillMaxSize().wallpaper().then(if (!inSheet) Modifier.statusBarsPadding() else Modifier)) {
-        Spacer(Modifier.height(8.dp))
-        SectionPicker()
+    Column(
+        Modifier.fillMaxSize()
+            .then(if (safariGlass) Modifier.safariGlassWallpaper() else Modifier.wallpaper())
+            .then(if (!inSheet) Modifier.statusBarsPadding() else Modifier)
+    ) {
+        Spacer(Modifier.height(if (safariGlass) 18.dp else 8.dp))
+        if (!safariGlass || Browser.startSection != 0) SectionPicker()
         Box(Modifier.weight(1f)) {
             when (Browser.startSection) {
                 0 -> StartHome(tab)
@@ -121,6 +124,7 @@ private fun SectionPicker() {
 private fun StartHome(tab: BrowserTab?) {
     val s = Store.settings
     val c = Ios.c
+    val safariGlass = s.layout == com.gr4nt.browser.data.ToolbarLayout.BOTTOM
     var editing by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 140.dp)) {
         if (tab?.isPrivate == true) {
@@ -135,16 +139,24 @@ private fun StartHome(tab: BrowserTab?) {
         }
         if (s.showFavorites) {
             SectionHeader("Favorites", Modifier.padding(top = 14.dp))
-            TileGrid(Store.favorites.items, onRemove = { Store.favorites.remove(it.url) })
+            TileGrid(Store.favorites.items, onRemove = { Store.favorites.remove(it.url) }, safariGlass = safariGlass)
         }
-        if (s.showFrequent) {
+        if (safariGlass) {
+            if (s.showFrequent && tab?.isPrivate != true) {
+                val recent = Store.history.items.distinctBy { it.url }.take(6)
+                if (recent.isNotEmpty()) {
+                    SectionHeader("Recently Visited", Modifier.padding(top = 28.dp))
+                    RecentlyVisited(recent)
+                }
+            }
+        } else if (s.showFrequent) {
             val freq = Store.frequentlyVisited()
             if (freq.isNotEmpty()) {
                 SectionHeader("Frequently Visited", Modifier.padding(top = 10.dp))
                 TileGrid(freq, onRemove = { site -> Store.history.items.filter { hostOf(it.url) == hostOf(site.url) }.forEach { Store.history.remove(it.url) } })
             }
         }
-        if (s.showPrivacy) {
+        if (!safariGlass && s.showPrivacy) {
             SectionHeader("Privacy Report", Modifier.padding(top = 10.dp))
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 20.dp).pressable(scaleTo = 0.97f) { Browser.showPrivacy = true }
@@ -162,7 +174,7 @@ private fun StartHome(tab: BrowserTab?) {
                 )
             }
         }
-        if (s.showReading && Store.readingList.items.isNotEmpty()) {
+        if (!safariGlass && s.showReading && Store.readingList.items.isNotEmpty()) {
             SectionHeader("Reading List", Modifier.padding(top = 10.dp)) {
                 TextAction("Show All") { Browser.startSection = 2 }
             }
@@ -192,17 +204,38 @@ private fun StartHome(tab: BrowserTab?) {
         if (editing) {
             IosGroup("Start Page") {
                 IosRow("Favorites", trailing = { IosSwitch(s.showFavorites) { s.showFavorites = it; s.save() } })
-                IosRow("Frequently Visited", trailing = { IosSwitch(s.showFrequent) { s.showFrequent = it; s.save() } })
-                IosRow("Privacy Report", trailing = { IosSwitch(s.showPrivacy) { s.showPrivacy = it; s.save() } })
-                IosRow("Reading List", divider = false, trailing = { IosSwitch(s.showReading) { s.showReading = it; s.save() } })
+                IosRow(if (safariGlass) "Recently Visited" else "Frequently Visited", trailing = { IosSwitch(s.showFrequent) { s.showFrequent = it; s.save() } })
+                if (!safariGlass) {
+                    IosRow("Privacy Report", trailing = { IosSwitch(s.showPrivacy) { s.showPrivacy = it; s.save() } })
+                    IosRow("Reading List", divider = false, trailing = { IosSwitch(s.showReading) { s.showReading = it; s.save() } })
+                }
             }
         }
     }
 }
 
+@Composable
+private fun RecentlyVisited(sites: List<Site>) {
+    val c = Ios.c
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).glassCard(RoundedCornerShape(16.dp))) {
+        sites.forEachIndexed { index, site ->
+            Row(
+                Modifier.fillMaxWidth().pressable(scaleTo = 0.98f) { Browser.load(site.url) }.padding(horizontal = 16.dp, vertical = 11.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(hostOf(site.url), style = Ios.subhead.copy(fontWeight = FontWeight.Medium), color = c.label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(site.title.ifBlank { hostOf(site.url) }, style = Ios.caption, color = c.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Icon(Icons.Outlined.AccessTime, null, tint = c.tertiary, modifier = Modifier.size(16.dp))
+            }
+            if (index < sites.lastIndex) Box(Modifier.fillMaxWidth().padding(start = 16.dp).height(0.5.dp).background(c.separator))
+        }
+    }
+}
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TileGrid(sites: List<Site>, onRemove: (Site) -> Unit) {
+private fun TileGrid(sites: List<Site>, onRemove: (Site) -> Unit, safariGlass: Boolean = false) {
     val c = Ios.c
     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
         sites.take(16).chunked(4).forEach { row ->
@@ -216,7 +249,15 @@ private fun TileGrid(sites: List<Site>, onRemove: (Site) -> Unit) {
                                 .padding(vertical = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            SiteTile(site.url, site.title, size = 62.dp, corner = 31.dp)
+                            if (safariGlass) {
+                                val title = site.title.ifBlank { hostOf(site.url) }
+                                val letter = title.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "•"
+                                val palette = listOf(Color(0xFF0A84FF), Color(0xFF5E5CE6), Color(0xFF30B0C7), Color(0xFFBF5AF2), Color(0xFFFF375F))
+                                val tileColor = palette[Math.floorMod(site.url.hashCode(), palette.size)]
+                                Box(Modifier.size(64.dp).glassCard(RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+                                    Text(letter, color = tileColor, fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            } else SiteTile(site.url, site.title, size = 62.dp, corner = 31.dp)
                             Spacer(Modifier.height(6.dp))
                             Text(
                                 site.title.ifBlank { hostOf(site.url) }, style = Ios.caption, color = c.label,

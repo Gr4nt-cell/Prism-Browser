@@ -45,10 +45,12 @@ enum class SearchEngine(val label: String, val query: String, val suggest: Strin
 const val DEFAULT_TEXT_ZOOM = 90
 
 class Settings(private val p: SharedPreferences) {
-    // Arc Search interface is the default; existing installs are switched to it once
+    // Safari Glass is the new default. Keep explicit Safari choices and migrate the old Arc default once.
     var layout by mutableStateOf(
-        if (!p.getBoolean("arcMigrated", false)) ToolbarLayout.ARC
-        else runCatching { ToolbarLayout.valueOf(p.getString("layout", "ARC")!!) }.getOrDefault(ToolbarLayout.ARC)
+        if (!p.getBoolean("safariGlassMigrated", false)) {
+            val saved = runCatching { ToolbarLayout.valueOf(p.getString("layout", "ARC")!!) }.getOrDefault(ToolbarLayout.ARC)
+            if (saved == ToolbarLayout.ARC) ToolbarLayout.BOTTOM else saved
+        } else runCatching { ToolbarLayout.valueOf(p.getString("layout", "BOTTOM")!!) }.getOrDefault(ToolbarLayout.BOTTOM)
     )
     /** Archive tabs not opened for this many hours (0 = never). Arc's default is 24 h. */
     var archiveAfterHours by mutableStateOf(p.getInt("archiveHours", 24))
@@ -95,6 +97,7 @@ class Settings(private val p: SharedPreferences) {
         p.edit()
             .putString("layout", layout.name)
             .putBoolean("arcMigrated", true)
+            .putBoolean("safariGlassMigrated", true)
             .putInt("archiveHours", archiveAfterHours)
             .putBoolean("pinchSummary", pinchToSummarize)
             .putString("engine", engine.name)

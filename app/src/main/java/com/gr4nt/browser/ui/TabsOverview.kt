@@ -20,6 +20,10 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -97,11 +101,13 @@ fun TabsOverview(visible: Boolean) {
         LaunchedEffect(Unit) { Browser.tabsPrivate = Browser.current?.isPrivate ?: false; Browser.archiveStaleTabs() }
         val private = Browser.tabsPrivate
         // Arc Search: an Android-Recents style carousel; Safari layouts keep the iOS deck
-        val arc = com.gr4nt.browser.data.Store.settings.layout == com.gr4nt.browser.data.ToolbarLayout.ARC
+        val layout = com.gr4nt.browser.data.Store.settings.layout
+        val arc = layout == com.gr4nt.browser.data.ToolbarLayout.ARC
+        val safariGlass = layout == com.gr4nt.browser.data.ToolbarLayout.BOTTOM
         var q by remember { mutableStateOf("") }
         val group = Browser.tabs.filter { it.isPrivate == private }
             .filter { q.isBlank() || it.displayTitle.contains(q, true) || it.url.contains(q, true) }
-        Box(Modifier.fillMaxSize().then(if (private) Modifier.background(Color(0xFF151517)) else Modifier.wallpaper())) {
+        Box(Modifier.fillMaxSize().then(if (private) Modifier.safariGlassWallpaper(privateMode = true) else if (safariGlass) Modifier.safariGlassWallpaper() else Modifier.wallpaper())) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 // Search tabs
                 Row(
@@ -138,8 +144,8 @@ fun TabsOverview(visible: Boolean) {
                     if (group.isEmpty()) {
                         EmptyDeck(private, q.isNotBlank())
                     } else {
-                        // Arc uses Android-style recents cards; other layouts retain the iOS stack.
-                        CardDeck(group, private, arc = arc)
+                        if (safariGlass) SafariTabGrid(group, private)
+                        else CardDeck(group, private, arc = arc)
                     }
                 }
             }
@@ -159,6 +165,35 @@ fun TabsOverview(visible: Boolean) {
                         Browser.editing = true
                     }
                     GlassCircleButton(Icons.Outlined.Settings, "Settings", size = 50.dp) { Browser.showSettings = true }
+                }
+            } else if (safariGlass) {
+                Row(
+                    Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 18.dp, vertical = 10.dp).fillMaxWidth()
+                        .animateEnterExit(enter = slideInVertically(spring(0.82f, 320f)) { it * 2 }, exit = slideOutVertically(spring(1f, 420f)) { it * 2 }),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        if (private) "Private ✓" else "Private",
+                        style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = if (private) c.tint else c.label,
+                        modifier = Modifier.pressable(scaleTo = 0.9f) { Browser.tabsPrivate = !private }.padding(horizontal = 10.dp, vertical = 8.dp)
+                    )
+                    GlassCircleButton(Icons.Outlined.Add, "New Tab", size = 56.dp) {
+                        Browser.newTab(private = private)
+                        Browser.showTabs = false
+                        Browser.editing = true
+                    }
+                    Text(
+                        "Done", style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = c.tint,
+                        modifier = Modifier.pressable(scaleTo = 0.9f) {
+                            val cur = Browser.current
+                            if (cur == null || cur.isPrivate != private) {
+                                val first = Browser.tabs.lastOrNull { it.isPrivate == private } ?: Browser.newTab(private = private)
+                                Browser.select(first.id)
+                            }
+                            Browser.showTabs = false
+                        }.padding(horizontal = 10.dp, vertical = 8.dp)
+                    )
                 }
             } else
             // Bottom glass bar: +  |  Private / N Tabs  |  Done
@@ -191,6 +226,64 @@ fun TabsOverview(visible: Boolean) {
                     }
                     Browser.showTabs = false
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SafariTabGrid(tabs: List<BrowserTab>, private: Boolean) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 130.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(tabs, key = { it.id }) { tab -> SafariTabCard(tab, private) }
+    }
+}
+
+@Composable
+private fun SafariTabCard(tab: BrowserTab, private: Boolean) {
+    val c = Ios.c
+    val shape = RoundedCornerShape(18.dp)
+    val selected = Browser.currentId == tab.id
+    Column(
+        Modifier.fillMaxWidth().height(208.dp).glassCard(shape)
+            .then(if (selected) Modifier.border(2.dp, c.tint, shape) else Modifier)
+            .pressable(scaleTo = 0.98f) { Browser.select(tab.id); Browser.showTabs = false }
+            .padding(8.dp)
+    ) {
+        Row(Modifier.fillMaxWidth().height(28.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (tab.isStartPage) "Start Page" else tab.host.ifBlank { tab.displayTitle },
+                style = Ios.caption.copy(fontWeight = FontWeight.SemiBold), color = c.label,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+            )
+            Box(Modifier.size(26.dp).pressable(scaleTo = 0.8f) { Browser.close(tab.id) }, contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Close, "Close tab", tint = c.secondary, modifier = Modifier.size(16.dp))
+            }
+        }
+        Box(
+            Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(12.dp))
+                .background(if (private) Color(0xFF3A3F4D) else Color.White.copy(alpha = 0.66f)),
+            contentAlignment = Alignment.Center
+        ) {
+            val thumb = tab.thumbnail
+            if (thumb != null && !tab.isStartPage) {
+                Image(thumb.asImageBitmap(), null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            } else if (tab.isStartPage) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Outlined.StarOutline, null, tint = c.tint, modifier = Modifier.size(30.dp))
+                    Spacer(Modifier.height(4.dp))
+                    Text("Favorites", style = Ios.caption, color = c.secondary)
+                }
+            } else {
+                Text(
+                    (tab.host.firstOrNull() ?: tab.displayTitle.firstOrNull() ?: "•").uppercaseChar().toString(),
+                    style = Ios.title, color = c.tint
+                )
             }
         }
     }

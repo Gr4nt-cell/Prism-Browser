@@ -391,10 +391,10 @@ fun SettingsSheet(visible: Boolean) {
                     }
                 }
             }
-            IosGroup("Layout", footer = "Arc: tabs · address · ^ actions, like Arc Search. Compact, Bottom and Top are Safari-style layouts.") {
+            IosGroup("Layout", footer = "Safari Glass uses a pastel glass backdrop, two floating bottom bars and grid tabs. Arc, Compact and Top remain available.") {
                 ToolbarLayout.entries.forEachIndexed { i, l ->
                     IosRow(
-                        when (l) { ToolbarLayout.ARC -> "Arc"; else -> "Safari · " + l.name.lowercase().replaceFirstChar { it.uppercase() } },
+                        when (l) { ToolbarLayout.ARC -> "Arc"; ToolbarLayout.BOTTOM -> "Safari Glass"; else -> "Safari · " + l.name.lowercase().replaceFirstChar { it.uppercase() } },
                         divider = i < ToolbarLayout.entries.size - 1,
                         trailing = { if (s.layout == l) Text("✓", color = c.tint, style = Ios.headline) }
                     ) { s.layout = l; s.save() }

@@ -85,6 +85,24 @@ fun Modifier.wallpaper(): Modifier {
     val c = Ios.c
     return this.background(c.wall)
 }
+/** Pastel refraction backdrop used by the Safari Glass start page and tab grid. */
+@Composable
+fun Modifier.safariGlassWallpaper(privateMode: Boolean = false): Modifier {
+    val c = Ios.c
+    return drawBehind {
+        if (privateMode) {
+            drawRect(Color(0xFF1C1F2A))
+        } else if (c.dark) {
+            drawRect(c.wall)
+        } else {
+            drawRect(Color(0xFFEEF2F8))
+            val radius = maxOf(size.width, size.height) * 0.62f
+            drawRect(Brush.radialGradient(colors = listOf(Color(0xFFA9D4F5), Color.Transparent), center = androidx.compose.ui.geometry.Offset(size.width * 0.20f, size.height * 0.10f), radius = radius))
+            drawRect(Brush.radialGradient(colors = listOf(Color(0xFFF7C3A8), Color.Transparent), center = androidx.compose.ui.geometry.Offset(size.width * 0.82f, size.height * 0.34f), radius = radius * 0.88f))
+            drawRect(Brush.radialGradient(colors = listOf(Color(0xFFA8E3C8), Color.Transparent), center = androidx.compose.ui.geometry.Offset(size.width * 0.52f, size.height * 0.96f), radius = radius * 0.95f))
+        }
+    }
+}
 
 /**
  * Translucent frosted card with a fine highlight rim and a restrained layered shadow.

@@ -123,7 +123,9 @@ fun TabsOverview(visible: Boolean) {
                         if (q.isNotEmpty()) InlineIconButton(Icons.Outlined.Close, "Clear Search", size = 30.dp, iconSize = 16.dp) { q = "" }
                     }
                     Box(Modifier.weight(1f).fillMaxWidth()) {
-                        if (group.isEmpty()) EmptyDeck(private, q.isNotBlank()) else SafariTabGrid(group, private)
+                        if (group.isEmpty()) EmptyDeck(private, q.isNotBlank())
+                        else if (isLargeScreen()) SafariTabGrid(group, private)
+                        else CardDeck(group, private)
                     }
                 }
                 Row(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp).fillMaxWidth(),

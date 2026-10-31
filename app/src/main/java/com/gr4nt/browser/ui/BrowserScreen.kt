@@ -53,6 +53,7 @@ import androidx.compose.material.icons.outlined.ArrowForwardIos
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FilterNone
 import androidx.compose.material.icons.outlined.IosShare
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Refresh
@@ -549,6 +550,7 @@ private fun TabButtonMenu(visible: Boolean) {
             ) {
                 MenuItem(Icons.Outlined.Add, "New Tab") { Browser.showTabMenu = false; Browser.newTab(private = false); Browser.editing = true }
                 MenuItem(Icons.Outlined.VisibilityOff, "New Private Tab") { Browser.showTabMenu = false; Browser.newTab(private = true); Browser.editing = true }
+                MenuItem(Icons.Outlined.Inventory2, "Archive", trailing = Store.archive.items.size.takeIf { it > 0 }?.toString()) { Browser.showTabMenu = false; Browser.showArchive = true }
                 MenuDivider()
                 MenuItem(Icons.Outlined.Close, "Close This Tab", destructive = true) {
                     Browser.showTabMenu = false; Browser.currentId?.let { Browser.close(it) }

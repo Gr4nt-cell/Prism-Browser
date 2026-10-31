@@ -281,7 +281,7 @@ private fun SafariTabCard(tab: BrowserTab, private: Boolean) {
                 }
             } else {
                 Text(
-                    (tab.host.firstOrNull() ?: tab.displayTitle.firstOrNull() ?: "•").uppercaseChar().toString(),
+                    (tab.host.firstOrNull() ?: tab.displayTitle.firstOrNull())?.uppercaseChar()?.toString() ?: "•",
                     style = Ios.title, color = c.tint
                 )
             }

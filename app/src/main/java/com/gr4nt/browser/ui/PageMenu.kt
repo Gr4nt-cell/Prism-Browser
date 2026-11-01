@@ -37,7 +37,7 @@ import androidx.compose.material.icons.outlined.DesktopWindows
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.IosShare
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Print
@@ -72,9 +72,9 @@ fun PageMenu(visible: Boolean) {
         fun act(f: () -> Unit) { Browser.showPageMenu = false; f() }
         Box(Modifier.fillMaxSize().background(c.scrim.copy(alpha = 0.12f)).clickable(interactionSource = null, indication = null) { Browser.showPageMenu = false }) {
             val top = isLargeScreen() || Store.settings.layout == com.gr4nt.browser.data.ToolbarLayout.TOP
-            val origin = androidx.compose.ui.graphics.TransformOrigin(0.08f, if (top) 0f else 1f)
+            val origin = androidx.compose.ui.graphics.TransformOrigin(0.92f, if (top) 0f else 1f)
             Box(
-                Modifier.align(if (top) Alignment.TopStart else Alignment.BottomStart)
+                Modifier.align(if (top) Alignment.TopEnd else Alignment.BottomEnd)
                     .animateEnterExit(
                         enter = scaleIn(Motion.bouncy, initialScale = 0.3f, transformOrigin = origin) + fadeIn(tween(120)),
                         exit = scaleOut(Motion.smooth, targetScale = 0.4f, transformOrigin = origin) + fadeOut(tween(140))
@@ -83,13 +83,14 @@ fun PageMenu(visible: Boolean) {
                 Column(
                     Modifier
                         .navigationBarsPadding()
-                        .padding(start = 12.dp, bottom = 70.dp, top = 90.dp)
+                        .padding(start = 12.dp, end = 12.dp, bottom = 136.dp, top = 90.dp)
                         .width(300.dp)
                         .heightIn(max = 560.dp)
                         .glass(RoundedCornerShape(26.dp), strong = true)
                         .verticalScroll(rememberScrollState())
-                        .padding(vertical = 6.dp)
+                        .padding(vertical = 10.dp)
                 ) {
+                    Text("Page tools", style = Ios.title3, color = c.label, modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp))
                     // Text size + reader row
                     Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         SmallBox(Modifier.weight(1f), { Browser.setTextZoom(t.textZoom - 10) }) { Text("A", fontSize = 13.sp, color = c.label) }
@@ -104,7 +105,7 @@ fun PageMenu(visible: Boolean) {
                         MenuItem(Icons.Outlined.AutoAwesome, "Summarize Page") { act { Browser.summarize() } }
                         MenuItem(Icons.Outlined.Search, "Find on Page") { act { Browser.startFind() } }
                         MenuDivider(true)
-                        MenuItem(Icons.Outlined.IosShare, "Share") { act { Browser.share(t.url, t.title) } }
+                        MenuItem(Icons.Outlined.Share, "Share") { act { Browser.share(t.url, t.title) } }
                         MenuItem(Icons.Outlined.ContentCopy, "Copy Link") { act { Browser.copy(t.url) } }
                         MenuItem(Icons.AutoMirrored.Outlined.OpenInNew, "Open in App…") { act { Browser.activity?.let { com.gr4nt.browser.browser.AppLinks.openWith(it, t.url) } } }
                         MenuItem(Icons.Outlined.BookmarkAdd, "Add Bookmark") { act { Browser.addBookmark() } }
@@ -183,7 +184,7 @@ fun ContextMenuOverlay(target: ContextTarget?) {
                 Column(Modifier.fillMaxWidth().glass(RoundedCornerShape(22.dp), strong = true).padding(vertical = 4.dp)) {
                     tgt.link?.let { link ->
                         if (com.gr4nt.browser.player.Media.isMediaUrl(link)) {
-                            MenuItem(Icons.Outlined.Movie, "Play in iBrowser") {
+                            MenuItem(Icons.Outlined.Movie, "Play in Prism Browser") {
                                 act { com.gr4nt.browser.player.Media.play(link, link.substringAfterLast('/').substringBefore('?'), referer = tab?.url, userAgent = tab?.webView?.settings?.userAgentString) }
                             }
                         }
@@ -194,7 +195,7 @@ fun ContextMenuOverlay(target: ContextTarget?) {
                         MenuItem(Icons.AutoMirrored.Outlined.OpenInNew, "Open in App…") { act { Browser.activity?.let { com.gr4nt.browser.browser.AppLinks.openWith(it, link) } } }
                         MenuItem(Icons.Outlined.AddBox, "Add to Reading List") { act { Browser.addReadingList(link, link) } }
                         MenuItem(Icons.Outlined.ContentCopy, "Copy Link") { act { Browser.copy(link) } }
-                        MenuItem(Icons.Outlined.IosShare, "Share…") { act { Browser.share(link) } }
+                        MenuItem(Icons.Outlined.Share, "Share…") { act { Browser.share(link) } }
                         MenuItem(Icons.Outlined.Download, "Download Linked File") {
                             act {
                                 Browser.requestDownload(link, DownloadManager.guessName(link, null, null), null, -1,

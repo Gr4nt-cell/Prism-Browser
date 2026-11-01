@@ -54,7 +54,7 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.IosShare
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Movie
@@ -326,7 +326,7 @@ fun ArcActionsSheet(visible: Boolean) {
                         BigAction(Icons.Outlined.ChromeReaderMode, "Reader", Modifier.weight(1f)) { act { Browser.openReader() } }
                         BigAction(Icons.Outlined.Search, "Find", Modifier.weight(1f)) { act { Browser.startFind() } }
                         BigAction(Icons.Outlined.ContentCopy, "Copy Link", Modifier.weight(1f)) { act { Browser.copy(t.url) } }
-                        BigAction(Icons.Outlined.IosShare, "Share", Modifier.weight(1f)) { act { Browser.share(t.url, t.title) } }
+                        BigAction(Icons.Outlined.Share, "Share", Modifier.weight(1f)) { act { Browser.share(t.url, t.title) } }
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

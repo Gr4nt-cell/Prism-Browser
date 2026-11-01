@@ -237,7 +237,7 @@ private fun AddressEditor(tf: TextFieldValue, onChange: (TextFieldValue) -> Unit
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
-            Modifier.weight(1f).height(48.dp).glass(RoundedCornerShape(24.dp), strong = true).padding(horizontal = 14.dp),
+            Modifier.weight(1f).height(48.dp).glass(RoundedCornerShape(18.dp), strong = true).padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Outlined.Search, null, tint = c.secondary, modifier = Modifier.size(19.dp))
@@ -248,7 +248,7 @@ private fun AddressEditor(tf: TextFieldValue, onChange: (TextFieldValue) -> Unit
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go, autoCorrectEnabled = false),
                 keyboardActions = KeyboardActions(onGo = { if (tf.text.isNotBlank()) Browser.load(tf.text) }),
                 modifier = Modifier.weight(1f).focusRequester(focus).testTag("address-editor"),
-                decorationBox = { inner -> Box { if (tf.text.isEmpty()) Text("Search or Enter Website Name", style = Ios.callout, color = c.secondary); inner() } }
+                decorationBox = { inner -> Box { if (tf.text.isEmpty()) Text("Search anything or enter an address", style = Ios.callout, color = c.secondary); inner() } }
             )
             if (tf.text.isNotEmpty()) {
                 Box(Modifier.size(30.dp).pressable(scaleTo = 0.9f) { onChange(TextFieldValue("")) }, contentAlignment = Alignment.Center) {

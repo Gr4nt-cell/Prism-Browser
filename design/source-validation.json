@@ -1,0 +1,19 @@
+{
+  "base": "1c5782746ae2c822033ed6c1f0ec027398922307",
+  "protected_files_unchanged": 35,
+  "page_menu_browser_calls_preserved": 30,
+  "feature_overlays_present": 20,
+  "theme_text_contrast_minimum": {
+    "light": {
+      "ink": 11.13,
+      "muted": 4.61,
+      "accent": 4.69
+    },
+    "dark": {
+      "ink": 8.75,
+      "muted": 4.95,
+      "accent": 6.41
+    }
+  },
+  "note": "Source guards and theme checks do not replace Android interaction or visual tests."
+}

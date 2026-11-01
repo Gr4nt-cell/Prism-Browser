@@ -1,0 +1,59 @@
+{
+  "date": "2026-11-01",
+  "base_commit": "1c5782746ae2c822033ed6c1f0ec027398922307",
+  "local_branch": "gpt",
+  "version": "1.0.31",
+  "debug_apk_sha256": "d3500e5930c9f015027cb4d1b208e9745ddbdf831843c77cd2814ea3ec043f74",
+  "build": {
+    "application": "passed",
+    "interaction_test_apk": "passed",
+    "interaction_tests_compiled": 4,
+    "connected_tests_executed": false,
+    "device_available": false,
+    "verified_command": ":app:assembleDebug :app:assembleDebugAndroidTest -Pkotlin.incremental=false"
+  },
+  "source_guards": {
+    "base": "1c5782746ae2c822033ed6c1f0ec027398922307",
+    "protected_files_unchanged": 35,
+    "page_menu_browser_calls_preserved": 30,
+    "feature_overlays_present": 20,
+    "theme_text_contrast_minimum": {
+      "light": {
+        "ink": 11.13,
+        "muted": 4.61,
+        "accent": 4.69
+      },
+      "dark": {
+        "ink": 8.75,
+        "muted": 4.95,
+        "accent": 6.41
+      }
+    },
+    "note": "Source guards and theme checks do not replace Android interaction or visual tests."
+  },
+  "figma": {
+    "file_key": "BPzlo4VIkIiLgn7RT7RtzJ",
+    "canvas_updated": false,
+    "blocker": "Collab seat MCP call limit",
+    "editable_import": "design/figma-prism-browser.js",
+    "mock_validation": {
+      "screens": 9,
+      "components": 41,
+      "variables": 12,
+      "instances": 177,
+      "font": "Roboto",
+      "raster_ui_fills": 0
+    },
+    "visual_reference_inspected": true
+  },
+  "github": {
+    "published": false,
+    "branch_creation_error": "403 Resource not accessible by integration"
+  },
+  "remaining_checks": [
+    "Real Android visual/interaction checks on phone and tablet",
+    "Navigation, private browsing, media playback/downloads and permissions on device",
+    "Release build with existing production signing credentials"
+  ],
+  "private_material_palette": "Dark private chrome, sheets and system-bar appearance"
+}

@@ -68,7 +68,7 @@ import java.util.Date
 import java.util.Locale
 
 private val SECTIONS = listOf(
-    "Start" to Icons.Outlined.StarOutline,
+    "Home" to Icons.Outlined.StarOutline,
     "Bookmarks" to Icons.AutoMirrored.Outlined.MenuBook,
     "Reading List" to Icons.Outlined.ChromeReaderMode,
     "History" to Icons.Outlined.AccessTime
@@ -83,9 +83,9 @@ fun StartPage(tab: BrowserTab?, inSheet: Boolean) {
             Column(
                 Modifier.widthIn(max = 860.dp).fillMaxSize()
                     .then(if (!inSheet && !desktop) Modifier.statusBarsPadding() else Modifier)
-                    .padding(top = if (desktop) 36.dp else 12.dp)
+                    .padding(top = if (desktop) 12.dp else 8.dp)
             ) {
-                if (!desktop || Browser.startSection != 0) SectionPicker()
+                if (Browser.startSection != 0) SectionPicker()
                 Box(Modifier.weight(1f)) {
                     when (Browser.startSection) {
                         0 -> StartHome(tab)
@@ -107,7 +107,7 @@ private fun SectionPicker() {
     ) {
         val segW = maxWidth / SECTIONS.size
         val x by animateDpAsState(segW * Browser.startSection, androidx.compose.animation.core.spring(dampingRatio = 0.72f, stiffness = 420f), label = "seg")
-        Box(Modifier.offset(x = x).width(segW).fillMaxSize().clip(RoundedCornerShape(17.dp)).background(if (c.dark) Color(0xFF3A3A3C) else Color.White))
+        Box(Modifier.offset(x = x).width(segW).fillMaxSize().clip(RoundedCornerShape(14.dp)).background(c.tint.copy(alpha = .14f)))
         Row(Modifier.fillMaxSize()) {
             SECTIONS.forEachIndexed { i, (label, icon) ->
                 Row(
@@ -131,13 +131,14 @@ private fun StartHome(tab: BrowserTab?) {
     val s = Store.settings
     val c = Ios.c
     var editing by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding().padding(bottom = if (isLargeScreen()) 40.dp else 150.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).navigationBarsPadding().padding(bottom = if (isLargeScreen()) 40.dp else 170.dp)) {
+        BrowserHomeHero(tab)
         if (tab?.isPrivate == true) {
             Column(Modifier.fillMaxWidth().padding(20.dp).glassCard(RoundedCornerShape(22.dp)).padding(18.dp)) {
                 Text("Private Browsing", style = Ios.headline, color = c.label)
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "iBrowser won't remember the pages you visit, your search history or AutoFill information. Cookies and site data are wiped when you close your private tabs.",
+                    "Prism Browser won't remember the pages you visit, your search history or AutoFill information. Cookies and site data are wiped when you close your private tabs.",
                     style = Ios.subhead, color = c.secondary
                 )
             }
@@ -149,12 +150,12 @@ private fun StartHome(tab: BrowserTab?) {
         if (s.showFrequent && tab?.isPrivate != true) {
             val recent = Store.history.items.distinctBy { it.url }.take(6)
             if (recent.isNotEmpty()) {
-                SectionHeader("Recently Visited", Modifier.padding(top = 28.dp))
+                SectionHeader("Continue browsing", Modifier.padding(top = 28.dp))
                 RecentlyVisited(recent)
             }
         }
         if (s.showPrivacy) {
-            SectionHeader("Privacy Report", Modifier.padding(top = 10.dp))
+            SectionHeader("Your privacy, at a glance", Modifier.padding(top = 10.dp))
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 20.dp).pressable(scaleTo = 0.97f) { Browser.showPrivacy = true }
                     .glassCard(RoundedCornerShape(22.dp)).padding(16.dp),
@@ -173,7 +174,7 @@ private fun StartHome(tab: BrowserTab?) {
         }
         if (s.showReading && Store.readingList.items.isNotEmpty()) {
             SectionHeader("Reading List", Modifier.padding(top = 10.dp)) {
-                TextAction("Show All") { Browser.startSection = 2 }
+                TextAction("View all") { Browser.startSection = 2 }
             }
             LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(Store.readingList.items.take(10), key = { it.url }) { site ->
@@ -194,15 +195,15 @@ private fun StartHome(tab: BrowserTab?) {
         Spacer(Modifier.height(24.dp))
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Text(
-                "Edit", style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = c.label,
+                "Customize start page", style = Ios.subhead.copy(fontWeight = FontWeight.SemiBold), color = c.label,
                 modifier = Modifier.pressable(scaleTo = 0.9f) { editing = !editing }.clip(CircleShape).background(c.fill).padding(horizontal = 22.dp, vertical = 9.dp)
             )
         }
         if (editing) {
             IosGroup("Start Page") {
                 IosRow("Favorites", trailing = { IosSwitch(s.showFavorites) { s.showFavorites = it; s.save() } })
-                IosRow("Recently Visited", trailing = { IosSwitch(s.showFrequent) { s.showFrequent = it; s.save() } })
-                IosRow("Privacy Report", trailing = { IosSwitch(s.showPrivacy) { s.showPrivacy = it; s.save() } })
+                IosRow("Continue browsing", trailing = { IosSwitch(s.showFrequent) { s.showFrequent = it; s.save() } })
+                IosRow("Your privacy, at a glance", trailing = { IosSwitch(s.showPrivacy) { s.showPrivacy = it; s.save() } })
                 IosRow("Reading List", divider = false, trailing = { IosSwitch(s.showReading) { s.showReading = it; s.save() } })
             }
         }

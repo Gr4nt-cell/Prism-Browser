@@ -391,16 +391,16 @@ fun SettingsSheet(visible: Boolean) {
                     }
                 }
             }
-            IosGroup("Layout", footer = "Compact uses Safari’s floating address pill. Bottom adds a full toolbar; Top keeps the address above the page. All layouts use the same tab grid and Liquid Glass material.") {
+            IosGroup("Layout", footer = "Choose a compact command dock, an expanded dock with labels, or a top command bar. Every layout retains tab gestures, navigation and browser actions.") {
                 listOf(ToolbarLayout.COMPACT, ToolbarLayout.BOTTOM, ToolbarLayout.TOP).forEachIndexed { i, l ->
                     IosRow(
-                        when (l) { ToolbarLayout.BOTTOM -> "Safari · Bottom"; ToolbarLayout.TOP -> "Safari · Top"; else -> "Safari · Compact" },
+                        when (l) { ToolbarLayout.BOTTOM -> "Expanded dock"; ToolbarLayout.TOP -> "Top command bar"; else -> "Compact dock" },
                         divider = i < 2,
                         trailing = { if (s.layout == l) Text("✓", color = c.tint, style = Ios.headline) }
                     ) { s.layout = l; s.save() }
                 }
             }
-            IosGroup(footer = "On tablets and wide windows, Safari desktop chrome places the address above a horizontal tab strip. The sidebar opens Bookmarks, Reading List, History and your tabs.") {
+            IosGroup(footer = "Larger windows use a navigation rail, a top command bar and an optional vertical tab workspace. Library, downloads and privacy tools stay close to your pages.") {
                 IosRow("Desktop Layout on Large Screens", divider = false, trailing = { IosSwitch(s.desktopLayout) { s.desktopLayout = it; s.save() } })
             }
             ToolbarAppearanceGroup()
@@ -446,7 +446,7 @@ fun SettingsSheet(visible: Boolean) {
             val act = ctx as? com.gr4nt.browser.MainActivity
             var fileAccess by remember(visible) { mutableStateOf(act?.hasAllFilesAccess() == true) }
             fun hasPerm(p: String) = androidx.core.content.ContextCompat.checkSelfPermission(ctx, p) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            IosGroup("Device Access", footer = "Websites always ask before using your camera, microphone or location. Full file access lets iBrowser save downloads to any folder and open any file on your phone.") {
+            IosGroup("Device Access", footer = "Websites always ask before using your camera, microphone or location. Full file access lets Prism Browser save downloads to any folder and open any file on your phone.") {
                 IosRow("Files & Storage", value = if (fileAccess) "All Files" else "Downloads Only", showChevron = true) {
                     act?.requestAllFilesAccess(); fileAccess = act?.hasAllFilesAccess() == true
                 }
@@ -497,7 +497,7 @@ fun SettingsSheet(visible: Boolean) {
             IosGroup {
                 IosRow("Clear History and Website Data", titleColor = c.red, divider = false) { Browser.clearHistoryAndData() }
             }
-            IosGroup("About", footer = "iBrowser 1.0 — Safari-style browser for Android.") {
+            IosGroup("About", footer = "Prism Browser — a clearer view of the web. Built for Android.") {
                 IosRow("Rules loaded", value = "${AdBlocker.instance.ruleCount}")
                 IosRow("Trackers blocked", value = "${s.totalBlocked}")
                 IosRow("Privacy Policy", showChevron = true, divider = false) {
@@ -543,7 +543,7 @@ fun PrivacySheet(visible: Boolean) {
                 Spacer(Modifier.height(12.dp))
             }
             Text(
-                "iBrowser blocks ads, trackers, cryptominers and malware domains using ${AdBlocker.instance.ruleCount} filter rules " +
+                "Prism Browser blocks ads, trackers, cryptominers and malware domains using ${AdBlocker.instance.ruleCount} filter rules " +
                     "from EasyList, EasyPrivacy, uBlock, AdGuard and more. Elements left behind by blocked ads are hidden, " +
                     "and pop-ups that open without a tap are stopped.",
                 style = Ios.footnote, color = c.secondary, modifier = Modifier.padding(horizontal = 8.dp)

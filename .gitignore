@@ -7,3 +7,5 @@ local.properties
 captures/
 .cxx/
 app/ibrowser.jks
+
+.kotlin/

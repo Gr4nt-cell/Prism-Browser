@@ -1,17 +1,17 @@
-# iBrowser
+# Prism Browser
 
-An Android browser with a Safari (iOS 27) style interface, built natively with Kotlin and Jetpack Compose.
+An Android browser with an original Liquid Glass interface, built natively with Kotlin and Jetpack Compose.
 
 **Download:** grab `iBrowser.apk` from the [latest release](../../releases/tag/latest). Every push to `main` rebuilds it with GitHub Actions.
 
 ## Interface
-- iOS 27 **compact** layout (default): floating Liquid-Glass back button, address pill with the Page menu on the left, and a Tabs button on the right. Bottom and Top layouts are available in Settings.
-- Tablets and wide windows use desktop Safari chrome: a top address toolbar, horizontal tab strip and an optional library sidebar.
-- Toolbar shrinks to a small domain pill while scrolling; swipe the address bar left/right to switch tabs, up to open the tab overview.
-- New **Start page** with Start / Bookmarks / Reading List / History sections, Favorites, Frequently Visited and a Privacy Report.
-- Dense, scrollable **Page menu** (text size, Reader, Find on Page, Share, bookmarks, reading list, desktop site, translate, print/PDF, hide toolbar, per-site ad blocking, website settings).
-- Responsive tab overview grid with thumbnails, swipe-to-close, search, and Private Browsing (separate cookie profile on supported WebView versions).
-- Reader view with font size, serif/sans and four themes; long-press link and image menus; full-screen video.
+
+- Original teal, ink and ivory Liquid Glass design, with light/dark themes and adaptive glass tint.
+- Phones: compact command dock, expanded dock with labels or top command bar; counted tab overview, back/forward, Home, New Tab and page tools.
+- Tablets and desktop-sized windows: navigation rail, top command bar and vertical tab workspace. The workspace overlays narrower tablet windows and docks beside the page on wider ones.
+- Start page with web search, library cards, favorites, browsing history, privacy report and reading list.
+- Thumbnail tab grid on phones/tablets with search, private mode, swipe-to-close, archive and tab actions.
+- Existing Reader, page summary, find, sharing, bookmarks, permissions, downloads, media detection and player features remain attached to the same browser actions.
 
 ## Ad blocker
 - Adblock Plus / uBlock-compatible engine: hosts files, `||domain^` rules, wildcards, separators, anchors, regex rules, exceptions, `$third-party`, `$domain=`, resource-type options and `$important`.
@@ -37,6 +37,6 @@ An Android browser with a Safari (iOS 27) style interface, built natively with K
 ```
 
 ## Privacy
-iBrowser collects no personal data — no accounts, analytics or ads. See the [Privacy Policy](PRIVACY.md) (also in the app under Settings › About › Privacy Policy).
+Prism Browser collects no personal data — no accounts, analytics or ads. See the [Privacy Policy](PRIVACY.md) (also in the app under Settings › About › Privacy Policy).
 
-Design notes and the editable Figma import script: [Safari redesign](design/SAFARI_REDESIGN.md).
+Design notes, previews and editable Figma import: [Prism redesign](design/PRISM_REDESIGN.md).

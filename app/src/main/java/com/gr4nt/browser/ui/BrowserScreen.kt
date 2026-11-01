@@ -52,10 +52,11 @@ import androidx.compose.material.icons.outlined.ArrowBackIosNew
 import androidx.compose.material.icons.outlined.ArrowForwardIos
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FilterNone
-import androidx.compose.material.icons.outlined.IosShare
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.rounded.ArrowDownward
@@ -78,6 +79,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -97,6 +99,25 @@ import kotlin.math.abs
 
 @Composable
 fun BrowserApp() {
+    val base = Ios.c
+    val current = Browser.current
+    val palette = if (current?.isPrivate == true) DarkIos else base
+    val desktop = isLargeScreen()
+    val statusColor = if (!desktop && current?.isStartPage == false) current.themeColor?.let { Color(it) } ?: palette.background else palette.background
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.SideEffect {
+        (view.context as? android.app.Activity)?.window?.let { window ->
+            androidx.core.view.WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = statusColor.luminance() > .5f
+                isAppearanceLightNavigationBars = !palette.dark
+            }
+        }
+    }
+    androidx.compose.runtime.CompositionLocalProvider(LocalIos provides palette) { BrowserAppContent() }
+}
+
+@Composable
+private fun BrowserAppContent() {
     val tab = Browser.current
     val layout = Store.settings.layout
     val c = Ios.c
@@ -104,6 +125,8 @@ fun BrowserApp() {
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     // tablets / desktops get the Safari-for-Mac chrome at the top instead of the phone layouts
     val desktop = isLargeScreen()
+    val wideWorkspace = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 1000
+    LaunchedEffect(desktop, wideWorkspace) { if (desktop) DesktopWorkspace.sidebarOpen = wideWorkspace }
     val topBarH = when {
         desktop -> 0.dp
         layout == ToolbarLayout.TOP && !Browser.toolbarHidden -> if (Browser.toolbarCollapsed) 34.dp else 64.dp
@@ -137,10 +160,10 @@ fun BrowserApp() {
 
         if (tab != null && desktop) {
             val startPad by androidx.compose.animation.core.animateDpAsState(
-                if (SafariDesktop.sidebarOpen) SAFARI_SIDEBAR_WIDTH + 16.dp else 0.dp,
+                WORKSPACE_RAIL_WIDTH + if (DesktopWorkspace.sidebarOpen && wideWorkspace) WORKSPACE_SIDEBAR_WIDTH + 16.dp else 0.dp,
                 spring(dampingRatio = 0.9f, stiffness = 380f), label = "safariSidebar"
             )
-            Box(Modifier.fillMaxSize().padding(start = startPad, top = statusTop + SAFARI_CHROME_HEIGHT, bottom = navBottom)) {
+            Box(Modifier.fillMaxSize().padding(start = startPad, top = statusTop + WORKSPACE_CHROME_HEIGHT + 8.dp, bottom = navBottom + 8.dp, end = 8.dp).clip(RoundedCornerShape(22.dp))) {
                 WebContent(tab)
                 if (tab.isStartPage) StartPage(tab, inSheet = false)
             }
@@ -191,15 +214,16 @@ fun BrowserApp() {
         val topBackdrop by rememberBackdropColor({ topBounds }, SampleSide.BELOW, sampling && (desktop || layout == ToolbarLayout.TOP))
 
         if (tab != null && desktop) {
-            Box(Modifier.align(Alignment.TopCenter).statusBarsPadding().onGloballyPositioned { topBounds = it.boundsInWindow() }) {
-                AdaptiveGlass(topBackdrop) { SafariDesktopChrome(tab) }
+            Box(Modifier.align(Alignment.TopCenter).padding(start = WORKSPACE_RAIL_WIDTH).statusBarsPadding().onGloballyPositioned { topBounds = it.boundsInWindow() }) {
+                AdaptiveGlass(topBackdrop) { WorkspaceChrome(tab) }
             }
+            WorkspaceRail(tab, Modifier.align(Alignment.TopStart).statusBarsPadding().navigationBarsPadding())
             androidx.compose.animation.AnimatedVisibility(
-                SafariDesktop.sidebarOpen,
-                Modifier.align(Alignment.TopStart).padding(top = statusTop + SAFARI_CHROME_HEIGHT + 8.dp, start = 8.dp, bottom = navBottom + 8.dp),
+                DesktopWorkspace.sidebarOpen,
+                Modifier.align(Alignment.TopStart).padding(top = statusTop + WORKSPACE_CHROME_HEIGHT + 8.dp, start = WORKSPACE_RAIL_WIDTH + 8.dp, bottom = navBottom + 8.dp),
                 enter = androidx.compose.animation.slideInHorizontally { -it } + fadeIn(),
                 exit = androidx.compose.animation.slideOutHorizontally { -it } + fadeOut()
-            ) { SafariSidebar(tab) }
+            ) { WorkspaceSidebar(tab) }
         } else if (tab != null && !Browser.findMode) {
             when (layout) {
                 ToolbarLayout.ARC -> Box(
@@ -261,9 +285,9 @@ fun BrowserApp() {
                 desktop -> 16.dp
                 Browser.idleHidden -> 12.dp
                 Browser.toolbarCollapsed || Browser.toolbarHidden -> 46.dp
-                layout == ToolbarLayout.BOTTOM -> 128.dp
-                layout == ToolbarLayout.ARC -> 72.dp
-                else -> 68.dp
+                layout == ToolbarLayout.TOP -> 70.dp
+                layout == ToolbarLayout.BOTTOM -> 142.dp
+                else -> 126.dp
             }
             val liftAnim by androidx.compose.animation.core.animateDpAsState(lift, androidx.compose.animation.core.spring(dampingRatio = 0.8f, stiffness = 380f), label = "miniLift")
             MiniPlayer(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = liftAnim))
@@ -309,7 +333,7 @@ fun AddressPill(tab: BrowserTab, modifier: Modifier = Modifier, height: Int = 48
             .height(height.dp)
             .graphicsLayer { translationX = shift; translationY = lift }
             .pressable(scaleTo = 0.97f, haptic = false, onPressedChange = { pressed = it }) { Browser.editing = true }
-            .glass(RoundedCornerShape((height / 2).dp), glow = glow)
+            .glass(RoundedCornerShape(16.dp), glow = glow)
             .pointerInput(tab.id) {
                 detectDragGestures(
                     onDragEnd = {
@@ -329,7 +353,7 @@ fun AddressPill(tab: BrowserTab, modifier: Modifier = Modifier, height: Int = 48
         Row(Modifier.fillMaxSize().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             // Page menu
             Box(contentAlignment = Alignment.Center) {
-                InlineIconButton(SafariSymbols.PageMenu, "Page menu", iconSize = 21.dp) { Browser.showPageMenu = true }
+                InlineIconButton(androidx.compose.material.icons.Icons.Outlined.Tune, "Page menu", iconSize = 20.dp) { Browser.showPageMenu = true }
                 if (tab.blocked > 0 && Store.settings.adBlock) {
                     Box(Modifier.align(Alignment.TopEnd).padding(top = 7.dp, end = 6.dp).size(7.dp).clip(CircleShape).background(c.green))
                 }
@@ -344,7 +368,7 @@ fun AddressPill(tab: BrowserTab, modifier: Modifier = Modifier, height: Int = 48
                     Spacer(Modifier.width(4.dp))
                 }
                 Text(
-                    if (tab.isStartPage) "Search or Enter Website Name" else tab.host.ifBlank { tab.url },
+                    if (tab.isStartPage) "Search or enter address" else tab.host.ifBlank { tab.url },
                     style = Ios.callout.copy(fontSize = (if (height < 44) 13 else 15).sp, fontWeight = if (tab.isStartPage) FontWeight.Normal else FontWeight.Medium),
                     color = if (tab.isStartPage) c.secondary else c.label,
                     maxLines = 1, overflow = TextOverflow.Ellipsis
@@ -398,37 +422,7 @@ private fun CollapsedPill(tab: BrowserTab) {
 // ------------------------------------------------------------------ Compact (iOS 27 default)
 
 @Composable
-private fun CompactToolbar(tab: BrowserTab) {
-    val collapsed = (Browser.toolbarCollapsed || Browser.toolbarHidden) && !tab.isStartPage
-    AnimatedContent(
-        collapsed,
-        transitionSpec = {
-            (fadeIn(tween(180, delayMillis = 60)) + scaleIn(Motion.bouncy, initialScale = if (targetState) 1.6f else 0.55f)) togetherWith
-                (fadeOut(tween(120)) + scaleOut(Motion.smooth, targetScale = if (targetState) 0.55f else 1.6f)) using
-                SizeTransform(clip = false) { _, _ -> spring(dampingRatio = 0.8f, stiffness = 380f) }
-        },
-        contentAlignment = Alignment.BottomCenter,
-        label = "compact"
-    ) { col ->
-        if (col) {
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CollapsedPill(tab) }
-        } else {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                GlassCircleButton(
-                    SafariSymbols.Back, "Back",
-                    enabled = tab.canGoBack || !tab.isStartPage,
-                    onLongClick = { if (tab.canGoForward) Browser.forward() }
-                ) { Browser.back() }
-                AddressPill(tab, Modifier.weight(1f))
-                TabsButton()
-            }
-        }
-    }
-}
+private fun CompactToolbar(tab: BrowserTab) = CommandDock(tab)
 
 @Composable
 private fun TabsButton(size: Int = 48) {
@@ -443,33 +437,7 @@ private fun TabsButton(size: Int = 48) {
 // ------------------------------------------------------------------ Bottom layout
 
 @Composable
-private fun BottomToolbar(tab: BrowserTab) {
-    val collapsed = (Browser.toolbarCollapsed || Browser.toolbarHidden) && !tab.isStartPage
-    AnimatedContent(
-        collapsed,
-        transitionSpec = {
-            (fadeIn(tween(180, delayMillis = 60)) + scaleIn(Motion.bouncy, initialScale = 0.8f)) togetherWith
-                (fadeOut(tween(120)) + scaleOut(Motion.smooth, targetScale = 0.8f)) using
-                SizeTransform(clip = false) { _, _ -> spring(dampingRatio = 0.8f, stiffness = 380f) }
-        },
-        contentAlignment = Alignment.BottomCenter,
-        label = "bottom"
-    ) { col ->
-        if (col) {
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { CollapsedPill(tab) }
-        } else {
-            Column(
-                Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                AddressPill(tab, Modifier.fillMaxWidth(), height = 48)
-                Box(Modifier.fillMaxWidth().height(48.dp).glass(RoundedCornerShape(24.dp)), contentAlignment = Alignment.Center) {
-                    ToolbarRow(tab)
-                }
-            }
-        }
-    }
-}
+private fun BottomToolbar(tab: BrowserTab) = CommandDock(tab, expanded = true)
 
 @Composable
 private fun TabsCountToolbarButton(tab: BrowserTab) {
@@ -514,24 +482,16 @@ private fun TopAddressBar(tab: BrowserTab) {
 
 @Composable
 private fun TopLayoutBottomBar(tab: BrowserTab) {
-    AnimatedVisibility(
-        !(Browser.toolbarCollapsed || Browser.toolbarHidden) || tab.isStartPage,
-        enter = slideInVertically { it }, exit = slideOutVertically { it }
-    ) {
-        Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp).glass(RoundedCornerShape(28.dp)).padding(4.dp)) {
-            ToolbarRow(tab)
-        }
-    }
+    if (!Browser.toolbarHidden && !Browser.toolbarCollapsed) Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
+        .glass(RoundedCornerShape(22.dp), elevation = 6.dp).padding(horizontal = 8.dp, vertical = 4.dp)) { CommandNavigation(tab) }
 }
-
-// ------------------------------------------------------------------ Tab button menu (long press)
 
 @Composable
 private fun TabButtonMenu(visible: Boolean) {
     AnimatedVisibility(visible, enter = fadeIn(tween(160)), exit = fadeOut(tween(200))) {
         Box(Modifier.fillMaxSize().background(Ios.c.scrim).clickable(interactionSource = null, indication = null) { Browser.showTabMenu = false }) {
             Column(
-                Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 12.dp, bottom = 70.dp).width(250.dp)
+                Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 12.dp, bottom = 136.dp).width(250.dp)
                     .animateEnterExit(
                         enter = scaleIn(Motion.bouncy, initialScale = 0.4f, transformOrigin = TransformOrigin(0.92f, 1f)) + fadeIn(tween(120)),
                         exit = scaleOut(Motion.smooth, targetScale = 0.5f, transformOrigin = TransformOrigin(0.92f, 1f)) + fadeOut(tween(120))

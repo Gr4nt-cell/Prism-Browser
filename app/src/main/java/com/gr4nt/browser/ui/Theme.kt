@@ -40,60 +40,36 @@ data class IosColors(
     val cardBorder: Color = Color(0x24000000)     // hairline that keeps white cards visible on white
 )
 
+// Compatibility names keep existing feature screens bound to one original browser palette.
 val LightIos = IosColors(
-    dark = false,
-    background = Color(0xFFFFFFFF),
-    grouped = Color(0xFFF2F2F7),
-    card = Color(0xE6FFFFFF),
-    fill = Color(0x1F767680),
-    label = Color(0xFF000000),
-    secondary = Color(0x993C3C43),
-    tertiary = Color(0x4D3C3C43),
-    separator = Color(0x4A3C3C43),
-    tint = Color(0xFF007AFF),
-    red = Color(0xFFFF3B30),
-    green = Color(0xFF34C759),
-    orange = Color(0xFFFF9500),
-    glass = Color(0xB8FFFFFF),
-    glassStrong = Color(0xE6FFFFFF),
-    glassBorder = Color(0xB8FFFFFF),
-    glassHighlight = Color(0xCCFFFFFF),
-    scrim = Color(0x26000000)
+    dark = false, background = Color(0xFFF5F8F7), grouped = Color(0xFFEDF3F1),
+    card = Color(0xCCFFFFFF), fill = Color(0x18204741), label = Color(0xFF152E2A),
+    secondary = Color(0xFF53685F), tertiary = Color(0xFF849B93), separator = Color(0x24204741),
+    tint = Color(0xFF076F61), red = Color(0xFFC84647), green = Color(0xFF138572), orange = Color(0xFFB97624),
+    glass = Color(0xB8F8FFFC), glassStrong = Color(0xE8F5FCF9), glassBorder = Color(0xCDFFFFFF),
+    glassHighlight = Color(0xE0FFFFFF), scrim = Color(0x55122C27), wall = Color(0xFFEDF3F0),
+    cardBorder = Color(0x1F126957)
 )
-
 val DarkIos = IosColors(
-    dark = true,
-    background = Color(0xFF000000),
-    grouped = Color(0xFF141416),
-    card = Color(0xFF1C1C1E),
-    fill = Color(0x3D767680),
-    label = Color(0xFFFFFFFF),
-    secondary = Color(0x99EBEBF5),
-    tertiary = Color(0x4DEBEBF5),
-    separator = Color(0xA6545458),
-    tint = Color(0xFF0A84FF),
-    red = Color(0xFFFF453A),
-    green = Color(0xFF30D158),
-    orange = Color(0xFFFF9F0A),
-    glass = Color(0x8C2C2C2E),
-    glassStrong = Color(0xE62C2C2E),
-    glassBorder = Color(0x40FFFFFF),
-    glassHighlight = Color(0x33FFFFFF),
-    scrim = Color(0x66000000),
-    wall = Color(0xFF0F0F11),
-    cardBorder = Color(0x2AFFFFFF)
+    dark = true, background = Color(0xFF0D1919), grouped = Color(0xFF112222),
+    card = Color(0xCF1B302F), fill = Color(0x386EAAA0), label = Color(0xFFE5F4EF),
+    secondary = Color(0xFFA2BDB4), tertiary = Color(0xFF718F85), separator = Color(0x306C998B),
+    tint = Color(0xFF76E3C6), red = Color(0xFFFF8C89), green = Color(0xFF76E3C6), orange = Color(0xFFEAC28B),
+    glass = Color(0xB31B3330), glassStrong = Color(0xEA19312E), glassBorder = Color(0x4576BAA3),
+    glassHighlight = Color(0x3DDCFFF3), scrim = Color(0xA304100E), wall = Color(0xFF0C1D1A),
+    cardBorder = Color(0x3A76BAA3)
 )
 
 val LocalIos = staticCompositionLocalOf { LightIos }
 
 object Ios {
     val c: IosColors @Composable get() = LocalIos.current
-    val title = TextStyle(fontSize = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.8).sp)
+    val title = TextStyle(fontSize = 36.sp, fontWeight = FontWeight.Medium, letterSpacing = (-1).sp)
     val title3 = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
     val headline = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.4).sp)
-    val body = TextStyle(fontSize = 17.sp, letterSpacing = (-0.4).sp)
-    val callout = TextStyle(fontSize = 16.sp, letterSpacing = (-0.3).sp)
-    val subhead = TextStyle(fontSize = 15.sp, letterSpacing = (-0.2).sp)
+    val body = TextStyle(fontSize = 16.sp, lineHeight = 24.sp)
+    val callout = TextStyle(fontSize = 15.sp, lineHeight = 22.sp)
+    val subhead = TextStyle(fontSize = 14.sp, lineHeight = 20.sp)
     val footnote = TextStyle(fontSize = 13.sp, letterSpacing = (-0.1).sp)
     val caption = TextStyle(fontSize = 12.sp)
     val caption2 = TextStyle(fontSize = 11.sp)
@@ -102,11 +78,11 @@ object Ios {
 @Composable
 fun IBrowserTheme(content: @Composable () -> Unit) {
     // Settings › Appearance: 0 = follow the system, 1 = always light, 2 = always dark
-    val dark = when (com.gr4nt.browser.data.Store.settings.appearance) {
+    val dark = (when (com.gr4nt.browser.data.Store.settings.appearance) {
         1 -> false
         2 -> true
         else -> isSystemInDarkTheme()
-    }
+    }) || com.gr4nt.browser.browser.Browser.current?.isPrivate == true
     val view = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.SideEffect {
         (view.context as? android.app.Activity)?.window?.let { w ->
@@ -117,8 +93,8 @@ fun IBrowserTheme(content: @Composable () -> Unit) {
         }
     }
     val ios = if (dark) DarkIos else LightIos
-    val scheme = if (dark) darkColorScheme(primary = ios.tint, background = ios.background, surface = ios.card)
-    else lightColorScheme(primary = ios.tint, background = ios.background, surface = ios.card)
+    val scheme = if (dark) darkColorScheme(primary = ios.tint, background = ios.background, surface = ios.card, onPrimary = Color(0xFF072A21), onSurface = ios.label)
+    else lightColorScheme(primary = ios.tint, background = ios.background, surface = ios.card, onPrimary = Color.White, onSurface = ios.label)
     CompositionLocalProvider(LocalIos provides ios) {
         MaterialTheme(colorScheme = scheme, content = content)
     }

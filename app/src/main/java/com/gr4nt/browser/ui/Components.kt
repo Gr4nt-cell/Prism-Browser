@@ -98,17 +98,17 @@ fun Modifier.wallpaper(): Modifier {
 fun Modifier.safariGlassWallpaper(privateMode: Boolean = false): Modifier {
     val c = Ios.c
     return drawBehind {
-        drawRect(if (privateMode) Color(0xFF171820) else if (c.dark) Color(0xFF14151D) else Color(0xFFF1F2F8))
+        drawRect(if (privateMode) Color(0xFF132320) else if (c.dark) Color(0xFF0D1B1A) else Color(0xFFF0F5F1))
         if (!privateMode) {
             val radius = maxOf(size.width, size.height) * 0.85f
             drawRect(Brush.radialGradient(
-                colors = listOf((if (c.dark) Color(0xFF343552) else Color(0xFFD6DFF3)).copy(alpha = 0.90f), Color.Transparent),
+                colors = listOf((if (c.dark) Color(0xFF174B40) else Color(0xFFCEE8DD)).copy(alpha = 0.90f), Color.Transparent),
                 center = androidx.compose.ui.geometry.Offset(size.width * 0.12f, size.height * 0.10f), radius = radius))
             drawRect(Brush.radialGradient(
-                colors = listOf((if (c.dark) Color(0xFF442A4E) else Color(0xFFEAD7EB)).copy(alpha = 0.75f), Color.Transparent),
+                colors = listOf((if (c.dark) Color(0xFF3E3827) else Color(0xFFF0E2CC)).copy(alpha = 0.75f), Color.Transparent),
                 center = androidx.compose.ui.geometry.Offset(size.width * 0.95f, size.height * 0.48f), radius = radius * 0.8f))
             drawRect(Brush.radialGradient(
-                colors = listOf((if (c.dark) Color(0xFF1C3942) else Color(0xFFD5EAE9)).copy(alpha = 0.70f), Color.Transparent),
+                colors = listOf((if (c.dark) Color(0xFF173E3F) else Color(0xFFD2E4E4)).copy(alpha = 0.70f), Color.Transparent),
                 center = androidx.compose.ui.geometry.Offset(size.width * 0.25f, size.height), radius = radius * 0.9f))
         }
     }
@@ -379,10 +379,10 @@ fun SiteTile(url: String, title: String, icon: android.graphics.Bitmap? = null, 
     val host = hostOf(url)
     val letter = (title.ifBlank { host }).firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.toString() ?: "•"
     val palette = listOf(
-        Color(0xFF5E5CE6), Color(0xFF0A84FF), Color(0xFF30B0C7), Color(0xFF34C759), Color(0xFFFF9F0A),
-        Color(0xFFFF375F), Color(0xFFBF5AF2), Color(0xFFAC8E68), Color(0xFF64D2FF), Color(0xFFFF453A)
+        Color(0xFF237F70), Color(0xFF567A98), Color(0xFF488F94), Color(0xFF5B8864), Color(0xFFB57C38),
+        Color(0xFFB67166), Color(0xFF86789D), Color(0xFF9A8861), Color(0xFF58989F), Color(0xFFB26F4E)
     )
-    val col = palette[abs(host.hashCode()) % palette.size]
+    val col = palette[(host.hashCode() and Int.MAX_VALUE) % palette.size]
     Box(
         Modifier
             .size(size)
@@ -404,7 +404,7 @@ fun SiteTile(url: String, title: String, icon: android.graphics.Bitmap? = null, 
 @Composable
 fun SectionHeader(text: String, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
     Row(modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = Ios.title3.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold), color = Ios.c.label, modifier = Modifier.weight(1f))
+        Text(text, style = Ios.title3.copy(fontSize = 20.sp, fontWeight = FontWeight.SemiBold), color = Ios.c.label, modifier = Modifier.weight(1f))
         trailing?.invoke()
     }
 }
@@ -414,9 +414,9 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier, trailing: (@Compo
 fun IosGroup(header: String? = null, footer: String? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         if (header != null) {
-            Text(header.uppercase(), style = Ios.footnote, color = Ios.c.secondary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp, top = 22.dp))
+            Text(header, style = Ios.headline, color = Ios.c.secondary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp, top = 22.dp))
         } else Spacer(Modifier.height(22.dp))
-        Column(Modifier.fillMaxWidth().glassCard(RoundedCornerShape(26.dp)), content = content)
+        Column(Modifier.fillMaxWidth().glassCard(RoundedCornerShape(20.dp)), content = content)
         if (footer != null) {
             Text(footer, style = Ios.footnote, color = Ios.c.secondary, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp))
         }
@@ -446,8 +446,8 @@ fun IosRow(
         ) {
             if (icon != null) {
                 if (iconBg != null) {
-                    Box(Modifier.size(30.dp).clip(RoundedCornerShape(8.dp)).background(iconBg), contentAlignment = Alignment.Center) {
-                        Icon(icon, null, tint = Color.White, modifier = Modifier.size(19.dp))
+                    Box(Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(iconBg.copy(alpha = .13f)), contentAlignment = Alignment.Center) {
+                        Icon(icon, null, tint = iconBg, modifier = Modifier.size(20.dp))
                     }
                 } else Icon(icon, null, tint = Ios.c.tint, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.width(14.dp))
@@ -472,7 +472,7 @@ fun IosSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
     Switch(
         checked = checked, onCheckedChange = onChange,
         colors = SwitchDefaults.colors(
-            checkedThumbColor = Color.White, checkedTrackColor = Ios.c.green, checkedBorderColor = Color.Transparent,
+            checkedThumbColor = Color.White, checkedTrackColor = Ios.c.tint, checkedBorderColor = Color.Transparent,
             uncheckedThumbColor = Color.White, uncheckedTrackColor = Ios.c.fill, uncheckedBorderColor = Color.Transparent
         )
     )
@@ -508,7 +508,7 @@ fun IosSheet(
                     .statusBarsPadding()
                     .padding(top = if (desktop) 24.dp else 10.dp, bottom = if (desktop) 24.dp else 0.dp)
                     .clip(if (desktop) RoundedCornerShape(26.dp) else RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
-                    .background(Ios.c.grouped)
+                    .safariGlassWallpaper()
             ) {
                 // grabber + nav bar: drag down to dismiss
                 Column(
@@ -528,7 +528,7 @@ fun IosSheet(
                     }
                     Box(Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 16.dp)) {
                         Box(Modifier.align(Alignment.CenterStart)) { leading?.invoke() }
-                        Text(title, style = Ios.headline, color = Ios.c.label, modifier = Modifier.align(Alignment.Center), textAlign = TextAlign.Center)
+                        Text(title, style = Ios.title3, color = Ios.c.label, modifier = Modifier.align(Alignment.CenterStart).padding(start = if (leading != null) 96.dp else 4.dp, end = 100.dp))
                         Box(
                             Modifier.align(Alignment.CenterEnd)
                                 .pressable(scaleTo = 0.88f) { dismiss() }

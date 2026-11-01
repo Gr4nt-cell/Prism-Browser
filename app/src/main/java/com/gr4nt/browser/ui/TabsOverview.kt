@@ -110,7 +110,7 @@ fun TabsOverview(visible: Boolean) {
                 Column(Modifier.fillMaxSize().statusBarsPadding()) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         GlassCircleButton(Icons.Outlined.Inventory2, "Archive", size = 44.dp) { Browser.showArchive = true }
-                        Text(if (private) "Private Browsing" else "$normalCount Tabs", style = Ios.title3,
+                        Text(if (private) "Private Browsing" else "Your tabs · $normalCount", style = Ios.title3,
                             color = c.label, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
                         GlassCircleButton(Icons.Outlined.Settings, "Settings", size = 44.dp) { Browser.showSettings = true }
                     }
@@ -124,8 +124,7 @@ fun TabsOverview(visible: Boolean) {
                     }
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         if (group.isEmpty()) EmptyDeck(private, q.isNotBlank())
-                        else if (isLargeScreen()) SafariTabGrid(group, private)
-                        else CardDeck(group, private)
+                        else SafariTabGrid(group, private)
                     }
                 }
                 Row(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp).fillMaxWidth(),
@@ -167,7 +166,7 @@ private fun SafariTabGrid(tabs: List<BrowserTab>, private: Boolean) {
 @Composable
 private fun SafariTabCard(tab: BrowserTab, private: Boolean) {
     val c = Ios.c
-    val shape = RoundedCornerShape(20.dp)
+    val shape = RoundedCornerShape(22.dp)
     var swipe by remember(tab.id) { mutableFloatStateOf(0f) }
     val threshold = with(LocalDensity.current) { 110.dp.toPx() }
     val selected = Browser.currentId == tab.id
@@ -232,7 +231,7 @@ private fun EmptyDeck(private: Boolean, searching: Boolean) {
             Text("Private Browsing", style = Ios.title3, color = Color.White)
             Spacer(Modifier.height(8.dp))
             Text(
-                "iBrowser won't remember the pages you visit, your search history or AutoFill information after you close a tab.",
+                "Prism Browser won't remember the pages you visit, your search history or AutoFill information after you close a tab.",
                 style = Ios.subhead, color = Color.White.copy(alpha = 0.6f), textAlign = TextAlign.Center
             )
         }

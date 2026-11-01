@@ -124,11 +124,11 @@ fun AdaptiveGlass(backdrop: Color?, content: @Composable () -> Unit) {
     // user's transparency: 0 = almost solid, 1 = almost clear (default 0.65 ≈ the original look)
     val baseAlpha = (0.92f - st.barTransparency * 0.80f).coerceIn(0.10f, 0.95f)
     val tint by animateColorAsState(target, tween(320), label = "glassTint")
-    val neutral by animateColorAsState(if (darkGlass) Color(0xFF20252D) else Color(0xFFF5F8FC), tween(320), label = "glassNeutral")
+    val neutral by animateColorAsState(if (darkGlass) Color(0xFF18312D) else Color(0xFFF0F8F3), tween(320), label = "glassNeutral")
     val palette = (if (darkGlass) DarkIos else LightIos).let { p ->
         // keep the tint subtle: a hint of the colour behind, not a solid paint
         val mixed = lerp(neutral, tint, if (backdrop == null || !st.barAdaptiveTint) 0f else 0.42f)
-        val frosted = lerp(mixed, Color(0xFFF0F1F5), onWhite)       // cool neutral frost on white
+        val frosted = lerp(mixed, Color(0xFFE6F1EB), onWhite)       // cool neutral frost on white
         p.copy(
             glass = frosted.copy(alpha = (baseAlpha + (if (darkGlass) 0.02f else 0f) + onWhite * 0.28f * (1f - baseAlpha)).coerceAtMost(0.93f)),
             liquid = st.barLiquidGlass,

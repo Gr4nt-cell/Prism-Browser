@@ -97,7 +97,7 @@ fun DownloadsSheet(visible: Boolean) {
             TextAction("Clear") { DownloadManager.clearFinished() }
             TextAction("New") { adding = !adding }
         }
-    }) {
+    }, centeredOnMobile = true) {
         if (adding) NewDownloadBox { link -> adding = false; Browser.downloadFromLink(link) }
         val list = DownloadManager.items
         val active = list.count { it.isActive }

@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -486,10 +487,13 @@ fun IosSheet(
     onDismiss: () -> Unit,
     leading: (@Composable () -> Unit)? = null,
     trailingText: String = "Done",
+    centeredOnMobile: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     AnimatedVisibility(visible, enter = fadeIn(tween(220)), exit = fadeOut(tween(220))) {
         val desktop = isLargeScreen()
+        val floating = desktop || centeredOnMobile
+        val compactFloating = centeredOnMobile && !desktop
         val drag = remember { Animatable(0f) }
         val scope = rememberCoroutineScope()
         val dismiss by rememberUpdatedState(onDismiss)
@@ -497,17 +501,27 @@ fun IosSheet(
         Box(Modifier.fillMaxSize().background(Ios.c.scrim), contentAlignment = Alignment.Center) {
             Column(
                 Modifier
-                    .widthIn(max = if (desktop) 720.dp else 10000.dp)
-                    .heightIn(max = if (desktop) 820.dp else 10000.dp)
-                    .fillMaxSize()
+                    .then(
+                        if (compactFloating) {
+                            Modifier.fillMaxWidth(0.84f).fillMaxHeight(0.7f)
+                                .widthIn(max = 520.dp).heightIn(max = 760.dp)
+                        } else {
+                            Modifier.widthIn(max = if (desktop) 720.dp else 10000.dp)
+                                .heightIn(max = if (desktop) 820.dp else 10000.dp)
+                                .fillMaxSize()
+                        }
+                    )
                     .animateEnterExit(
                         enter = slideInVertically(spring(dampingRatio = 0.86f, stiffness = 340f, visibilityThreshold = IntOffset.VisibilityThreshold)) { it },
                         exit = slideOutVertically(spring(dampingRatio = 1f, stiffness = 420f, visibilityThreshold = IntOffset.VisibilityThreshold)) { it }
                     )
                     .graphicsLayer { translationY = drag.value.coerceAtLeast(0f) }
                     .statusBarsPadding()
-                    .padding(top = if (desktop) 24.dp else 10.dp, bottom = if (desktop) 24.dp else 0.dp)
-                    .clip(if (desktop) RoundedCornerShape(26.dp) else RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
+                    .padding(
+                        top = if (desktop) 24.dp else if (compactFloating) 0.dp else 10.dp,
+                        bottom = if (desktop) 24.dp else if (compactFloating) 0.dp else 0.dp
+                    )
+                    .clip(if (floating) RoundedCornerShape(26.dp) else RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp))
                     .safariGlassWallpaper()
             ) {
                 // grabber + nav bar: drag down to dismiss

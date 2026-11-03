@@ -83,6 +83,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.gr4nt.browser.browser.Browser
 import com.gr4nt.browser.browser.BrowserTab
+import com.gr4nt.browser.data.Store
+import com.gr4nt.browser.data.ToolbarLayout
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ln
@@ -124,7 +126,14 @@ fun TabsOverview(visible: Boolean) {
                     }
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         if (group.isEmpty()) EmptyDeck(private, q.isNotBlank())
-                        else SafariTabGrid(group, private)
+                        else if (isLargeScreen()) SafariTabGrid(group, private)
+                        else key(private) {
+                            CardDeck(
+                                group = group,
+                                private = private,
+                                arc = Store.settings.layout == ToolbarLayout.ARC
+                            )
+                        }
                     }
                 }
                 Row(Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp).fillMaxWidth(),
@@ -289,10 +298,10 @@ private fun CardDeck(group: List<BrowserTab>, private: Boolean, arc: Boolean = f
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
-        val cardW = w * 0.72f
-        val cardH = (h * 0.74f).coerceAtMost(cardW * 2.05f)
-        // a little less than one card width per card → flicking through feels quicker
-        val step = if (arc) cardW * 1.06f else cardW * 0.82f
+        val cardW = w * 0.80f
+        val cardH = (h * 0.68f).coerceAtMost(cardW * 1.80f)
+        // Shorter detents make a deliberate swipe advance tabs sooner; fast flicks still project.
+        val step = if (arc) cardW * 1.04f else cardW * 0.74f
         val cardWdp = with(density) { cardW.toDp() }
         val cardHdp = with(density) { cardH.toDp() }
 
@@ -302,7 +311,7 @@ private fun CardDeck(group: List<BrowserTab>, private: Boolean, arc: Boolean = f
         }
 
         Box(
-            Modifier.fillMaxSize().pointerInput(group.size) {
+            Modifier.fillMaxSize().pointerInput(group.map { it.id }) {
                 val tracker = VelocityTracker()
                 detectHorizontalDragGestures(
                     onDragStart = { tracker.resetTracking(); settleJob?.cancel() },

@@ -139,7 +139,7 @@ private fun BrowserAppContent() {
     }
 
     Box(
-        Modifier.fillMaxSize().wallpaper()
+        Modifier.fillMaxSize().safariGlassWallpaper(tab?.isPrivate == true)
             // watch every touch (also those going into the web page) without consuming it
             .pointerInput(Unit) {
                 awaitPointerEventScope {

@@ -77,6 +77,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -98,19 +99,25 @@ fun Modifier.wallpaper(): Modifier {
 @Composable
 fun Modifier.safariGlassWallpaper(privateMode: Boolean = false): Modifier {
     val c = Ios.c
+    val k = if (c.dark) 0.42f else 0.30f
     return drawBehind {
-        drawRect(if (privateMode) Color(0xFF132320) else if (c.dark) Color(0xFF0D1B1A) else Color(0xFFF0F5F1))
+        drawRect(if (privateMode) c.background else c.grouped)
         if (!privateMode) {
-            val radius = maxOf(size.width, size.height) * 0.85f
             drawRect(Brush.radialGradient(
-                colors = listOf((if (c.dark) Color(0xFF174B40) else Color(0xFFCEE8DD)).copy(alpha = 0.90f), Color.Transparent),
-                center = androidx.compose.ui.geometry.Offset(size.width * 0.12f, size.height * 0.10f), radius = radius))
+                listOf(c.tint.copy(alpha = k), Color.Transparent),
+                center = Offset(size.width * 0.05f, size.height * 0.08f),
+                radius = size.width * 1.1f
+            ))
             drawRect(Brush.radialGradient(
-                colors = listOf((if (c.dark) Color(0xFF3E3827) else Color(0xFFF0E2CC)).copy(alpha = 0.75f), Color.Transparent),
-                center = androidx.compose.ui.geometry.Offset(size.width * 0.95f, size.height * 0.48f), radius = radius * 0.8f))
+                listOf(c.green.copy(alpha = k * 0.75f), Color.Transparent),
+                center = Offset(size.width, size.height * 0.55f),
+                radius = size.width * 1.1f
+            ))
             drawRect(Brush.radialGradient(
-                colors = listOf((if (c.dark) Color(0xFF173E3F) else Color(0xFFD2E4E4)).copy(alpha = 0.70f), Color.Transparent),
-                center = androidx.compose.ui.geometry.Offset(size.width * 0.25f, size.height), radius = radius * 0.9f))
+                listOf(c.orange.copy(alpha = k * 0.7f), Color.Transparent),
+                center = Offset(size.width * 0.1f, size.height * 0.98f),
+                radius = size.width
+            ))
         }
     }
 }
@@ -122,19 +129,17 @@ fun Modifier.safariGlassWallpaper(privateMode: Boolean = false): Modifier {
 fun Modifier.glassCard(shape: Shape): Modifier {
     val c = Ios.c
     return this
-        .shadow(16.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.52f else 0.10f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.62f else 0.17f))
-        // Soft cool frost with a fine top sheen and a restrained contact shadow.
-        .shadow(2.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.42f else 0.07f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.52f else 0.12f))
+        .shadow(14.dp, shape, clip = false, ambientColor = Color.Black.copy(alpha = if (c.dark) 0.18f else 0.10f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.22f else 0.14f))
         .clip(shape)
-        .background(if (c.dark) c.card.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.68f))
+        .background(c.card)
         .background(
             Brush.verticalGradient(
-                0f to Color.White.copy(alpha = if (c.dark) 0.10f else 0.62f),
-                0.48f to Color(0xFFBDD5FA).copy(alpha = if (c.dark) 0.025f else 0.08f),
-                1f to Color.White.copy(alpha = 0.015f)
+                0f to c.glassHighlight.copy(alpha = c.glassHighlight.alpha * 0.24f),
+                0.48f to Color.Transparent,
+                1f to Color.Transparent
             )
         )
-        .border(1.dp, if (c.dark) Color.White.copy(alpha = 0.16f) else Color.White.copy(alpha = 0.84f), shape)
+        .border(0.6.dp, c.glassBorder, shape)
 }
 
 /** Shared spring specs so motion feels consistent everywhere. */
@@ -154,8 +159,6 @@ object Motion {
 @Composable
 fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp, glow: Float = 0f): Modifier {
     val c = Ios.c
-    val sheenTop = if (c.dark) 0.18f else 0.58f
-    val rim = if (c.dark) 0.08f else 0.26f
     if (!c.liquid) {
         // plain frosted bar: flat translucent fill, even hairline, softer shadow — no sheen, rim or refraction tint
         return this
@@ -167,43 +170,30 @@ fun Modifier.glass(shape: Shape, strong: Boolean = false, elevation: Dp = 18.dp,
             .clip(shape)
             .background(if (strong) c.glassStrong else c.glass)
             .background(Color.White.copy(alpha = glow * if (c.dark) 0.10f else 0.22f))
-            .border(1.dp, if (c.dark) Color.White.copy(alpha = 0.24f) else c.glassBorder, shape)
+            .border(0.6.dp, if (c.dark) c.glassHighlight else c.glassBorder, shape)
     }
     return this
         .shadow(
-            elevation, shape, clip = false,
-            ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.48f else 0.16f) * c.glassShadow).coerceAtMost(1f)),
-            spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.60f else 0.26f) * c.glassShadow).coerceAtMost(1f))
+            elevation.coerceAtMost(14.dp), shape, clip = false,
+            ambientColor = Color.Black.copy(alpha = ((if (c.dark) 0.18f else 0.10f) * c.glassShadow).coerceAtMost(1f)),
+            spotColor = Color.Black.copy(alpha = ((if (c.dark) 0.22f else 0.14f) * c.glassShadow).coerceAtMost(1f))
         )
-        // tight contact shadow right at the edge, so the glass outline reads on any background
-        .shadow(2.dp, shape, clip = false,
-            ambientColor = Color.Black.copy(alpha = if (c.dark) 0.42f else 0.09f), spotColor = Color.Black.copy(alpha = if (c.dark) 0.50f else 0.16f))
         .clip(shape)
         .background(if (strong) c.glassStrong else c.glass)
-        // soft specular sheen
         .background(
             Brush.verticalGradient(
-                0f to Color.White.copy(alpha = sheenTop * 0.55f),
-                0.45f to Color.White.copy(alpha = 0f),
-                1f to Color.White.copy(alpha = 0f)
+                listOf(
+                    c.glassHighlight.copy(alpha = c.glassHighlight.alpha * 0.55f),
+                    Color.Transparent,
+                    Color.Transparent
+                )
             )
         )
-        // refraction rim at the bottom edge
-        .background(
-            Brush.verticalGradient(
-                0.70f to Color.White.copy(alpha = 0f),
-                1f to Color.White.copy(alpha = rim * 0.35f)
-            )
-        )
-        // press glow
         .background(Color.White.copy(alpha = glow * if (c.dark) 0.14f else 0.30f))
         .border(
-            1.2.dp,
-            // crisp edge: bright top rim, defined lower outline so the glass reads on any page
+            0.6.dp,
             Brush.verticalGradient(
-                0f to Color.White.copy(alpha = if (c.dark) 0.44f else 0.90f),
-                0.5f to (if (c.dark) Color.White.copy(alpha = 0.14f) else Color.Black.copy(alpha = 0.06f)),
-                1f to (if (c.dark) Color.White.copy(alpha = 0.22f) else c.glassBorder)
+                listOf(c.glassHighlight, c.glassBorder.copy(alpha = 0.10f), c.glassBorder.copy(alpha = 0.18f))
             ),
             shape
         )

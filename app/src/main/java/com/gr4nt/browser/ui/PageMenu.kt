@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -71,21 +74,37 @@ fun PageMenu(visible: Boolean) {
         val t = Browser.current ?: return@AnimatedVisibility
         fun act(f: () -> Unit) { Browser.showPageMenu = false; f() }
         Box(Modifier.fillMaxSize().background(c.scrim.copy(alpha = 0.12f)).clickable(interactionSource = null, indication = null) { Browser.showPageMenu = false }) {
-            val top = isLargeScreen() || Store.settings.layout == com.gr4nt.browser.data.ToolbarLayout.TOP
-            val origin = androidx.compose.ui.graphics.TransformOrigin(0.92f, if (top) 0f else 1f)
+            val desktop = isLargeScreen()
+            val top = desktop || Store.settings.layout == com.gr4nt.browser.data.ToolbarLayout.TOP
+            val origin = if (desktop) androidx.compose.ui.graphics.TransformOrigin(0.92f, if (top) 0f else 1f)
+                else androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.5f)
             Box(
-                Modifier.align(if (top) Alignment.TopEnd else Alignment.BottomEnd)
+                Modifier.align(
+                    if (!desktop) Alignment.Center
+                    else if (top) Alignment.TopEnd else Alignment.BottomEnd
+                )
                     .animateEnterExit(
-                        enter = scaleIn(Motion.bouncy, initialScale = 0.3f, transformOrigin = origin) + fadeIn(tween(120)),
-                        exit = scaleOut(Motion.smooth, targetScale = 0.4f, transformOrigin = origin) + fadeOut(tween(140))
+                        enter = scaleIn(Motion.bouncy, initialScale = if (desktop) 0.3f else 0.92f, transformOrigin = origin) + fadeIn(tween(120)),
+                        exit = scaleOut(Motion.smooth, targetScale = if (desktop) 0.4f else 0.96f, transformOrigin = origin) + fadeOut(tween(140))
                     )
             ) {
                 Column(
                     Modifier
-                        .navigationBarsPadding()
-                        .padding(start = 12.dp, end = 12.dp, bottom = 136.dp, top = 90.dp)
-                        .width(300.dp)
-                        .heightIn(max = 560.dp)
+                        .then(
+                            if (desktop) {
+                                Modifier.navigationBarsPadding()
+                                    .padding(start = 12.dp, end = 12.dp, bottom = 136.dp, top = 90.dp)
+                                    .width(300.dp)
+                                    .heightIn(max = 560.dp)
+                            } else {
+                                Modifier.statusBarsPadding()
+                                    .navigationBarsPadding()
+                                    .fillMaxWidth(0.84f)
+                                    .fillMaxHeight(0.70f)
+                                    .widthIn(max = 520.dp)
+                                    .heightIn(max = 760.dp)
+                            }
+                        )
                         .glass(RoundedCornerShape(26.dp), strong = true)
                         .verticalScroll(rememberScrollState())
                         .padding(vertical = 10.dp)

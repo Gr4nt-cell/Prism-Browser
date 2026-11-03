@@ -97,12 +97,7 @@ fun PageMenu(visible: Boolean) {
                                     .width(300.dp)
                                     .heightIn(max = 560.dp)
                             } else {
-                                Modifier.statusBarsPadding()
-                                    .navigationBarsPadding()
-                                    .fillMaxWidth(0.84f)
-                                    .fillMaxHeight(0.70f)
-                                    .widthIn(max = 520.dp)
-                                    .heightIn(max = 760.dp)
+                                Modifier.mobileSubmenuBounds()
                             }
                         )
                         .glass(RoundedCornerShape(26.dp), strong = true)
@@ -188,7 +183,10 @@ fun ContextMenuOverlay(target: ContextTarget?) {
             contentAlignment = Alignment.Center
         ) {
             Column(
-                Modifier.padding(24.dp).width(310.dp).animateEnterExit(
+                Modifier
+                    .then(if (isLargeScreen()) Modifier.padding(24.dp).width(310.dp) else Modifier.mobileSubmenuBounds())
+                    .verticalScroll(rememberScrollState())
+                    .animateEnterExit(
                     enter = scaleIn(Motion.bouncy, initialScale = 0.85f) + fadeIn(tween(140)),
                     exit = scaleOut(Motion.smooth, targetScale = 0.9f) + fadeOut(tween(140))
                 )

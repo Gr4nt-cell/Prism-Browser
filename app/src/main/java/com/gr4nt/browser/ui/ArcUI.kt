@@ -275,23 +275,30 @@ private fun ArcMiniPill(tab: BrowserTab) {
 fun ArcActionsSheet(visible: Boolean) {
     AnimatedVisibility(visible, enter = fadeIn(tween(160)), exit = fadeOut(tween(200))) {
         val c = Ios.c
+        val desktop = isLargeScreen()
         val t = Browser.current ?: return@AnimatedVisibility
         fun act(f: () -> Unit) { Browser.showActions = false; f() }
         Box(
             Modifier.fillMaxSize().background(Color.Black.copy(alpha = if (c.dark) 0.4f else 0.18f))
                 .clickable(interactionSource = null, indication = null) { Browser.showActions = false },
-            contentAlignment = Alignment.BottomCenter
+            contentAlignment = if (desktop) Alignment.BottomCenter else Alignment.Center
         ) {
             Column(
                 Modifier
-                    .navigationBarsPadding()
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
-                    .fillMaxWidth()
-                    .heightIn(max = 640.dp)
+                    .then(
+                        if (desktop) Modifier.navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)
+                            .fillMaxWidth().heightIn(max = 640.dp)
+                        else Modifier.mobileSubmenuBounds()
+                    )
                     .animateEnterExit(
-                        enter = slideInVertically(spring(dampingRatio = 0.84f, stiffness = 380f)) { it } +
-                            scaleIn(Motion.bouncy, initialScale = 0.92f, transformOrigin = TransformOrigin(0.9f, 1f)),
-                        exit = slideOutVertically(spring(dampingRatio = 1f, stiffness = 500f)) { it }
+                        enter = if (desktop) {
+                            slideInVertically(spring(dampingRatio = 0.84f, stiffness = 380f)) { it } +
+                                scaleIn(Motion.bouncy, initialScale = 0.92f, transformOrigin = TransformOrigin(0.9f, 1f))
+                        } else {
+                            scaleIn(Motion.bouncy, initialScale = 0.92f) + fadeIn(tween(120))
+                        },
+                        exit = if (desktop) slideOutVertically(spring(dampingRatio = 1f, stiffness = 500f))
+                        else scaleOut(Motion.smooth, targetScale = 0.96f) + fadeOut(tween(140))
                     )
                     .clickable(interactionSource = null, indication = null) { }
                     .glass(RoundedCornerShape(34.dp), strong = true)

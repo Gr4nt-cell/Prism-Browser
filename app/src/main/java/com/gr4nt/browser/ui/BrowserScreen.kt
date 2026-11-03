@@ -38,11 +38,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Article
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
@@ -489,14 +491,26 @@ private fun TopLayoutBottomBar(tab: BrowserTab) {
 @Composable
 private fun TabButtonMenu(visible: Boolean) {
     AnimatedVisibility(visible, enter = fadeIn(tween(160)), exit = fadeOut(tween(200))) {
-        Box(Modifier.fillMaxSize().background(Ios.c.scrim).clickable(interactionSource = null, indication = null) { Browser.showTabMenu = false }) {
+        val desktop = isLargeScreen()
+        Box(
+            Modifier.fillMaxSize().background(Ios.c.scrim).clickable(interactionSource = null, indication = null) { Browser.showTabMenu = false },
+            contentAlignment = if (desktop) Alignment.BottomEnd else Alignment.Center
+        ) {
             Column(
-                Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 12.dp, bottom = 136.dp).width(250.dp)
-                    .animateEnterExit(
-                        enter = scaleIn(Motion.bouncy, initialScale = 0.4f, transformOrigin = TransformOrigin(0.92f, 1f)) + fadeIn(tween(120)),
-                        exit = scaleOut(Motion.smooth, targetScale = 0.5f, transformOrigin = TransformOrigin(0.92f, 1f)) + fadeOut(tween(120))
+                Modifier
+                    .then(
+                        if (desktop) Modifier.navigationBarsPadding().padding(end = 12.dp, bottom = 136.dp).width(250.dp)
+                        else Modifier.mobileSubmenuBounds()
                     )
-                    .glass(RoundedCornerShape(24.dp), strong = true).padding(vertical = 6.dp)
+                    .animateEnterExit(
+                        enter = if (desktop) scaleIn(Motion.bouncy, initialScale = 0.4f, transformOrigin = TransformOrigin(0.92f, 1f)) + fadeIn(tween(120))
+                        else scaleIn(Motion.bouncy, initialScale = 0.92f) + fadeIn(tween(120)),
+                        exit = if (desktop) scaleOut(Motion.smooth, targetScale = 0.5f, transformOrigin = TransformOrigin(0.92f, 1f)) + fadeOut(tween(120))
+                        else scaleOut(Motion.smooth, targetScale = 0.96f) + fadeOut(tween(140))
+                    )
+                    .glass(RoundedCornerShape(26.dp), strong = true)
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 6.dp)
             ) {
                 MenuItem(Icons.Outlined.Add, "New Tab") { Browser.showTabMenu = false; Browser.newTab(private = false); Browser.editing = true }
                 MenuItem(Icons.Outlined.VisibilityOff, "New Private Tab") { Browser.showTabMenu = false; Browser.newTab(private = true); Browser.editing = true }

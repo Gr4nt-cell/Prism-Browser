@@ -89,38 +89,59 @@ import androidx.compose.ui.unit.sp
 import com.gr4nt.browser.data.hostOf
 import kotlin.math.abs
 
-/** The app background: a plain, flat colour (white in light mode, black in dark mode). */
+/** App backdrop. */
 @Composable
-fun Modifier.wallpaper(): Modifier {
-    val c = Ios.c
-    return this.background(c.wall)
-}
-/** Pastel refraction backdrop used by the Safari Glass start page and tab grid. */
+fun Modifier.wallpaper(): Modifier = safariGlassWallpaper()
+
+/** Mint-to-warm browser backdrop from the supplied Prism background reference. */
 @Composable
 fun Modifier.safariGlassWallpaper(privateMode: Boolean = false): Modifier {
     val c = Ios.c
-    val k = if (c.dark) 0.42f else 0.30f
     return drawBehind {
         drawRect(if (privateMode) c.background else c.grouped)
         if (!privateMode) {
-            drawRect(Brush.radialGradient(
-                listOf(c.tint.copy(alpha = k), Color.Transparent),
-                center = Offset(size.width * 0.05f, size.height * 0.08f),
-                radius = size.width * 1.1f
-            ))
-            drawRect(Brush.radialGradient(
-                listOf(c.green.copy(alpha = k * 0.75f), Color.Transparent),
-                center = Offset(size.width, size.height * 0.55f),
-                radius = size.width * 1.1f
-            ))
-            drawRect(Brush.radialGradient(
-                listOf(c.orange.copy(alpha = k * 0.7f), Color.Transparent),
-                center = Offset(size.width * 0.1f, size.height * 0.98f),
-                radius = size.width
-            ))
+            if (c.dark) {
+                drawRect(Brush.radialGradient(
+                    listOf(c.tint.copy(alpha = 0.42f), Color.Transparent),
+                    center = Offset(size.width * 0.05f, size.height * 0.08f),
+                    radius = size.width * 1.1f
+                ))
+                drawRect(Brush.radialGradient(
+                    listOf(c.green.copy(alpha = 0.32f), Color.Transparent),
+                    center = Offset(size.width, size.height * 0.55f),
+                    radius = size.width * 1.1f
+                ))
+                drawRect(Brush.radialGradient(
+                    listOf(c.orange.copy(alpha = 0.29f), Color.Transparent),
+                    center = Offset(size.width * 0.1f, size.height * 0.98f),
+                    radius = size.width
+                ))
+            } else {
+                drawRect(
+                    Brush.linearGradient(
+                        colors = listOf(Color(0xFFD6FFF0), Color(0xFFF4FBFA), Color(0xFFFFF0DF)),
+                        start = Offset.Zero,
+                        end = Offset(size.width, size.height)
+                    )
+                )
+                drawRect(Brush.radialGradient(
+                    listOf(Color(0xFF63F4CC).copy(alpha = 0.65f), Color.Transparent),
+                    center = Offset.Zero,
+                    radius = size.width * 1.05f
+                ))
+                drawRect(Brush.radialGradient(
+                    listOf(Color(0xFFFFB37C).copy(alpha = 0.65f), Color.Transparent),
+                    center = Offset(size.width, size.height),
+                    radius = size.width * 1.05f
+                ))
+            }
         }
     }
 }
+
+/** Shared phone submenu dimensions, matching the centered Page tools panel. */
+fun Modifier.mobileSubmenuBounds(): Modifier =
+    this.fillMaxWidth(0.84f).fillMaxHeight(0.70f).widthIn(max = 520.dp).heightIn(max = 760.dp)
 
 /**
  * Translucent frosted card with a fine highlight rim and a restrained layered shadow.
@@ -477,7 +498,7 @@ fun IosSheet(
     onDismiss: () -> Unit,
     leading: (@Composable () -> Unit)? = null,
     trailingText: String = "Done",
-    centeredOnMobile: Boolean = false,
+    centeredOnMobile: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     AnimatedVisibility(visible, enter = fadeIn(tween(220)), exit = fadeOut(tween(220))) {
@@ -506,7 +527,7 @@ fun IosSheet(
                         exit = slideOutVertically(spring(dampingRatio = 1f, stiffness = 420f, visibilityThreshold = IntOffset.VisibilityThreshold)) { it }
                     )
                     .graphicsLayer { translationY = drag.value.coerceAtLeast(0f) }
-                    .statusBarsPadding()
+                    .then(if (compactFloating) Modifier else Modifier.statusBarsPadding())
                     .padding(
                         top = if (desktop) 24.dp else if (compactFloating) 0.dp else 10.dp,
                         bottom = if (desktop) 24.dp else if (compactFloating) 0.dp else 0.dp

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- glass prism -->
+    <path android:pathData="M54,30 L78,72 L30,72 Z" android:fillColor="#B3FFFFFF" android:strokeColor="#FFFFFFFF" android:strokeWidth="2.5" android:strokeLineJoin="round" />
+    <path android:pathData="M54,30 L62,72 L30,72 Z" android:fillColor="#3314161C" />
+    <!-- light beam in -->
+    <path android:pathData="M22,58 L46,52" android:strokeColor="#FF14161C" android:strokeWidth="3" android:strokeLineCap="round" />
+    <!-- spectrum out -->
+    <path android:pathData="M64,52 L88,46" android:strokeColor="#FFFF6A3D" android:strokeWidth="3" android:strokeLineCap="round" />
+    <path android:pathData="M65,56 L88,56" android:strokeColor="#FFC9B6FF" android:strokeWidth="3" android:strokeLineCap="round" />
+    <path android:pathData="M66,60 L88,66" android:strokeColor="#FF8FD3FF" android:strokeWidth="3" android:strokeLineCap="round" />
+</vector>
